@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SimpleClaw — Let AI operate your computer</title>
+<meta name="description" content="SimpleClaw is a Windows desktop assistant that carries out on-screen tasks for you from a plain-language goal." />
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f7f7f8; --panel2:#f0f0f1; --border:#e5e5e5;
+    --fg:#181818; --muted:#6b6b6b; --accent:#e8c500; --accent-ink:#181818;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.05);
+    --radius:14px; --maxw:1080px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0a0a0a; --panel:#141414; --panel2:#1f1f1f; --border:#2a2a2a;
+      --fg:#fafafa; --muted:#8a8a8a; --accent:#FEDB00; --accent-ink:#0a0a0a;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 12px 40px rgba(0,0,0,.5);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px}
+
+  /* ---- top nav ---- */
+  header.nav{
+    position:sticky; top:0; z-index:50; backdrop-filter:saturate(140%) blur(10px);
+    background:color-mix(in srgb,var(--bg) 82%,transparent);
+    border-bottom:1px solid var(--border);
+  }
+  .nav .wrap{display:flex; align-items:center; gap:16px; height:60px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px; text-decoration:none}
+  .brand svg{width:30px; height:30px; border-radius:8px; display:block}
+  .brand .n{font-size:18px}
+  .brand .n b{color:var(--accent)}
+  nav.links{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap}
+  nav.links a{
+    text-decoration:none; color:var(--muted); font-size:14px; font-weight:600;
+    padding:8px 12px; border-radius:9px;
+  }
+  nav.links a:hover{color:var(--fg); background:var(--panel)}
+  .ghbtn{
+    background:var(--accent); color:var(--accent-ink)!important; border-radius:9px;
+    padding:8px 14px!important; font-weight:700!important;
+  }
+  .ghbtn:hover{filter:brightness(1.05)}
+
+  /* ---- hero ---- */
+  .hero{padding:72px 0 40px; text-align:center}
+  .hero .logo{width:84px;height:84px;border-radius:20px;box-shadow:var(--shadow);margin:0 auto 22px}
+  .hero h1{font-size:clamp(34px,6vw,56px); line-height:1.05; margin:0 0 14px; letter-spacing:-1px}
+  .hero h1 .hl{color:var(--accent)}
+  .hero p.lead{font-size:clamp(17px,2.4vw,21px); color:var(--muted); max-width:640px; margin:0 auto 28px}
+  .cta{display:flex; gap:12px; justify-content:center; flex-wrap:wrap}
+  .btn{
+    text-decoration:none; font-weight:700; font-size:15px; padding:13px 22px; border-radius:11px;
+    border:1px solid var(--border); background:var(--panel); color:var(--fg); transition:.15s;
+  }
+  .btn:hover{transform:translateY(-1px); box-shadow:var(--shadow)}
+  .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+  .warn{
+    margin:30px auto 0; max-width:660px; font-size:14px; color:var(--muted);
+    background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--accent);
+    border-radius:10px; padding:12px 16px; text-align:left;
+  }
+  .warn b{color:var(--fg)}
+
+  /* ---- sections ---- */
+  section{padding:52px 0; border-top:1px solid var(--border)}
+  section h2{font-size:clamp(24px,4vw,32px); margin:0 0 8px; letter-spacing:-.5px}
+  section .sub{color:var(--muted); margin:0 0 28px; max-width:640px}
+
+  .grid{display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:22px; box-shadow:var(--shadow);
+  }
+  .card .ic{
+    width:40px;height:40px;border-radius:10px;display:grid;place-items:center;
+    background:var(--panel2); font-size:20px; margin-bottom:14px;
+  }
+  .card h3{margin:0 0 6px; font-size:17px}
+  .card p{margin:0; color:var(--muted); font-size:14.5px}
+
+  /* ---- how it works ---- */
+  .flow{display:grid; gap:14px; grid-template-columns:repeat(4,1fr); counter-reset:step}
+  @media (max-width:760px){.flow{grid-template-columns:1fr 1fr}}
+  .step{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px; position:relative;
+  }
+  .step::before{
+    counter-increment:step; content:counter(step);
+    display:grid; place-items:center; width:30px;height:30px;border-radius:50%;
+    background:var(--accent); color:var(--accent-ink); font-weight:800; font-size:15px; margin-bottom:12px;
+  }
+  .step h4{margin:0 0 5px; font-size:15.5px}
+  .step p{margin:0; color:var(--muted); font-size:14px}
+
+  /* ---- steps list (usage) ---- */
+  ol.usage{counter-reset:u; list-style:none; padding:0; margin:0; display:grid; gap:12px}
+  ol.usage li{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 18px 16px 56px; position:relative;
+  }
+  ol.usage li::before{
+    counter-increment:u; content:counter(u); position:absolute; left:16px; top:16px;
+    width:26px;height:26px;border-radius:50%; background:var(--accent); color:var(--accent-ink);
+    font-weight:800; font-size:14px; display:grid; place-items:center;
+  }
+  ol.usage li b{color:var(--fg)}
+  kbd{
+    font:600 12.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:var(--panel2); border:1px solid var(--border); border-bottom-width:2px;
+    border-radius:6px; padding:3px 7px; color:var(--fg);
+  }
+
+  /* ---- actions table ---- */
+  table{width:100%; border-collapse:collapse; font-size:14.5px; overflow:hidden; border-radius:12px}
+  .tablewrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px}
+  th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--border)}
+  th{background:var(--panel2); font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted)}
+  tr:last-child td{border-bottom:none}
+  td code{
+    font:600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:var(--panel2); padding:2px 7px; border-radius:6px; color:var(--accent-ink);
+    background:var(--accent);
+  }
+
+  /* ---- docs links ---- */
+  .doclinks{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  a.doc{
+    text-decoration:none; background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:20px; display:block; transition:.15s;
+  }
+  a.doc:hover{transform:translateY(-2px); box-shadow:var(--shadow); border-color:var(--accent)}
+  a.doc h3{margin:0 0 6px; font-size:16px}
+  a.doc h3 .arw{color:var(--accent)}
+  a.doc p{margin:0; color:var(--muted); font-size:14px}
+
+  footer{border-top:1px solid var(--border); padding:34px 0; color:var(--muted); font-size:14px}
+  footer .wrap{display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:space-between}
+  footer a{color:var(--muted)}
+  footer a:hover{color:var(--fg)}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" rx="26" fill="#181818"/><g transform="translate(33.6,15.4) scale(0.66)" fill="none" stroke="#FEDB00" stroke-width="4" stroke-linejoin="round"><polygon points="0 25.28 39.99 45 0 70.28"/><polygon points="80 109.71 40 90 79.99 64.71"/><polygon points="39.99 0 79.99 19.71 39.99 45"/><polygon points="40 135 0 115.28 40 90"/><polygon fill="#FEDB00" points="39.99 45 79.99 64.71 40 90"/><polygon points="39.99 45 39.99 0 0 25.28"/><polygon points="40 90 40 135 80 109.71"/><polygon fill="#FEDB00" points="40 90 39.99 45 0 70.28"/></g></svg>
+      <span class="n">Simple<b>Claw</b></span>
+    </a>
+    <nav class="links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#usage">Using it</a>
+      <a href="#docs">Docs</a>
+      <a class="ghbtn" href="../../../releases">Download</a>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+<div class="hero wrap">
+  <svg class="logo" viewBox="0 0 120 120" aria-label="SimpleClaw logo"><rect width="120" height="120" rx="26" fill="#181818"/><g transform="translate(33.6,15.4) scale(0.66)" fill="none" stroke="#FEDB00" stroke-width="4" stroke-linejoin="round"><polygon points="0 25.28 39.99 45 0 70.28"/><polygon points="80 109.71 40 90 79.99 64.71"/><polygon points="39.99 0 79.99 19.71 39.99 45"/><polygon points="40 135 0 115.28 40 90"/><polygon fill="#FEDB00" points="39.99 45 79.99 64.71 40 90"/><polygon points="39.99 45 39.99 0 0 25.28"/><polygon points="40 90 40 135 80 109.71"/><polygon fill="#FEDB00" points="40 90 39.99 45 0 70.28"/></g></svg>
+  <h1>Tell your computer <span class="hl">what to do.</span><br/>SimpleClaw does it.</h1>
+  <p class="lead">A Windows desktop assistant that carries out on-screen tasks for you. Describe a goal in plain language — SimpleClaw looks at your screen and drives the mouse and keyboard until it's done.</p>
+  <div class="cta">
+    <a class="btn primary" href="../../../releases">Download for Windows</a>
+    <a class="btn" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/getting-started.md">Getting started</a>
+    <a class="btn" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md">User guide</a>
+  </div>
+  <p class="warn">⚠️ <b>SimpleClaw takes real control of your mouse and keyboard.</b> Start with <b>Dry run</b> on, try it on a throwaway window first, and keep your hand near the <kbd>F9</kbd> emergency-stop key.</p>
+</div>
+
+<section id="features" class="wrap">
+  <h2>Why SimpleClaw</h2>
+  <p class="sub">It works with whatever is on your screen — no per-app integrations, no scripting.</p>
+  <div class="grid">
+    <div class="card"><div class="ic">🗣️</div><h3>Plain-language goals</h3><p>Say what you want the outcome to be. No commands or macros to learn.</p></div>
+    <div class="card"><div class="ic">👁️</div><h3>Sees your screen</h3><p>A vision AI model reads a screenshot of your display and decides the next step.</p></div>
+    <div class="card"><div class="ic">🖱️</div><h3>Acts for you</h3><p>Clicks, types, scrolls, and uses shortcuts on your real desktop.</p></div>
+    <div class="card"><div class="ic">🧪</div><h3>Dry run by default</h3><p>Preview every planned action before letting it touch anything.</p></div>
+    <div class="card"><div class="ic">⛔</div><h3>Instant stop</h3><p>Press <kbd>F9</kbd> anywhere to abort immediately — even when unfocused.</p></div>
+    <div class="card"><div class="ic">🔌</div><h3>Bring your own model</h3><p>Connects to any OpenAI-compatible vision endpoint you configure.</p></div>
+  </div>
+</section>
+
+<section id="how" class="wrap">
+  <h2>How it works</h2>
+  <p class="sub">Every task runs as a loop of small, visible steps you can watch and stop.</p>
+  <div class="flow">
+    <div class="step"><h4>You set a goal</h4><p>Type what you want done and press Run.</p></div>
+    <div class="step"><h4>It sees the screen</h4><p>SimpleClaw captures your primary display.</p></div>
+    <div class="step"><h4>The model decides</h4><p>The AI picks the single next action.</p></div>
+    <div class="step"><h4>It acts &amp; repeats</h4><p>The action runs, then the loop continues until finished.</p></div>
+  </div>
+</section>
+
+<section id="usage" class="wrap">
+  <h2>Using it in four steps</h2>
+  <p class="sub">First-time setup is one screen: point SimpleClaw at your AI model in <b>⚙ Settings</b> (base URL, API key, model name).</p>
+  <ol class="usage">
+    <li><b>Type your goal</b> in the goal bar — e.g. <i>"Open Notepad and type hello world."</i> Make sure the target window is open and visible.</li>
+    <li><b>Keep Dry run ON</b> and press <b>Run</b>. SimpleClaw shows what it <i>would</i> do without touching your mouse or keyboard.</li>
+    <li><b>Watch the timeline &amp; marker</b> to confirm it's aiming at the right things.</li>
+    <li><b>Turn Dry run OFF</b> and Run again to let it act for real. Press <kbd>F9</kbd> or <b>Stop</b> at any time.</li>
+  </ol>
+</section>
+
+<section id="actions" class="wrap">
+  <h2>What it can do each step</h2>
+  <p class="sub">On every loop the model chooses exactly one action.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Action</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>click</code></td><td>Single left-click at a point.</td></tr>
+        <tr><td><code>left_double</code></td><td>Double-click — e.g. to open an item.</td></tr>
+        <tr><td><code>right_single</code></td><td>Right-click for context menus.</td></tr>
+        <tr><td><code>drag</code></td><td>Press, move, and release from one point to another.</td></tr>
+        <tr><td><code>hotkey</code></td><td>Press a keyboard shortcut (e.g. Ctrl+S).</td></tr>
+        <tr><td><code>type</code></td><td>Type a string of text.</td></tr>
+        <tr><td><code>scroll</code></td><td>Scroll the view up or down.</td></tr>
+        <tr><td><code>wait</code></td><td>Pause briefly to let something load.</td></tr>
+        <tr><td><code>finished</code></td><td>Declare the task complete and end the run.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="docs" class="wrap">
+  <h2>Documentation</h2>
+  <p class="sub">Full guides you can read here or browse on GitHub.</p>
+  <div class="doclinks">
+    <a class="doc" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/getting-started.md"><h3>Getting started <span class="arw">→</span></h3><p>Install, connect your model, and run your first task.</p></a>
+    <a class="doc" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md"><h3>User guide <span class="arw">→</span></h3><p>The complete manual: interface, settings, actions, and tips.</p></a>
+    <a class="doc" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/safety-and-privacy.md"><h3>Safety &amp; privacy <span class="arw">→</span></h3><p>Guardrails, safe-use habits, and how your data is handled.</p></a>
+    <a class="doc" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/troubleshooting.md"><h3>Troubleshooting <span class="arw">→</span></h3><p>Fixes for connection, targeting, and stopping issues.</p></a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>SimpleClaw · Windows desktop assistant · Apache-2.0</span>
+    <span><a href="../../../releases">Releases</a> · <a href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md">User guide</a> · <a href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/troubleshooting.md">Troubleshooting</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
