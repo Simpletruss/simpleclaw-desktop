@@ -2,7 +2,7 @@
 
 [← Docs home](index.html) · [Getting started](getting-started.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
-The complete manual for SimpleClaw 0.1.x (Windows).
+The complete manual for SimpleClaw 0.1.x (Windows, macOS, and Linux).
 
 ---
 
@@ -130,7 +130,7 @@ SimpleClaw 0.1.x is an early release:
 - **No built-in browser or remote-machine control** — it drives the local screen.
 - **No saved run history** — past runs aren't kept across app restarts.
 - **No auto-update** — install new versions manually from Releases.
-- **Windows only.**
+- **Desktop only** — available for Windows, macOS, and Linux (no mobile builds).
 
 ## Glossary
 

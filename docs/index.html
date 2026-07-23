@@ -4,7 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>SimpleClaw — Let AI operate your computer</title>
-<meta name="description" content="SimpleClaw is a Windows desktop assistant that carries out on-screen tasks for you from a plain-language goal." />
+<meta name="description" content="SimpleClaw is a desktop assistant for Windows, macOS, and Linux that carries out on-screen tasks for you from a plain-language goal." />
+<script>document.documentElement.className += " js";</script>
 <style>
   :root{
     --bg:#ffffff; --panel:#f7f7f8; --panel2:#f0f0f1; --border:#e5e5e5;
@@ -72,8 +73,45 @@
   }
   .warn b{color:var(--fg)}
 
+  /* ---- download dropdown ---- */
+  .dl{position:relative; display:inline-block; text-align:left}
+  .dl-toggle{
+    display:inline-flex; align-items:center; gap:10px; cursor:pointer;
+    font:inherit; font-weight:700; font-size:15px; padding:13px 20px; border-radius:11px;
+    border:1px solid transparent; background:var(--accent); color:var(--accent-ink); transition:.15s;
+  }
+  .dl-toggle:hover{transform:translateY(-1px); box-shadow:var(--shadow)}
+  .dl-toggle:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+  .dl-toggle .ico{display:inline-flex}
+  .dl-toggle .ico svg{width:18px; height:18px; display:block}
+  .dl-toggle .caret{display:inline-flex; transition:transform .18s ease}
+  .dl-toggle .caret svg{width:14px; height:14px; display:block}
+  .dl[data-open="true"] .dl-toggle .caret{transform:rotate(180deg)}
+
+  .dl-menu{
+    position:absolute; top:calc(100% + 8px); left:0; z-index:40; margin:0; padding:6px; list-style:none;
+    width:min(320px,90vw); background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; box-shadow:var(--shadow);
+  }
+  .dl-menu[hidden]{display:none}
+  .dl-item{
+    display:flex; flex-direction:column; gap:2px; text-decoration:none; color:var(--fg);
+    padding:10px 12px; border-radius:9px; transition:background .12s;
+  }
+  .dl-item:hover,.dl-item:focus-visible{background:var(--panel2); outline:none}
+  .dl-item:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+  .dl-name{display:flex; align-items:center; gap:9px; font-weight:700; font-size:15px}
+  .dl-name .os{display:inline-flex; color:var(--fg)}
+  .dl-name .os svg{width:17px; height:17px; display:block}
+  .dl-sub{color:var(--muted); font-size:13px; padding-left:26px}
+  .dl-badge{
+    font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--accent-ink); background:var(--accent); padding:2px 7px; border-radius:6px; margin-left:auto;
+  }
+  .detect-note{margin:12px auto 0; font-size:13px; color:var(--muted); text-align:center}
+
   /* ---- sections ---- */
-  section{padding:52px 0; border-top:1px solid var(--border)}
+  section.wrap{padding:76px 20px 64px; border-top:1px solid var(--border)}
   section h2{font-size:clamp(24px,4vw,32px); margin:0 0 8px; letter-spacing:-.5px}
   section .sub{color:var(--muted); margin:0 0 28px; max-width:640px}
 
@@ -83,9 +121,10 @@
     padding:22px; box-shadow:var(--shadow);
   }
   .card .ic{
-    width:40px;height:40px;border-radius:10px;display:grid;place-items:center;
-    background:var(--panel2); font-size:20px; margin-bottom:14px;
+    width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+    background:var(--accent); color:var(--accent-ink); margin-bottom:14px;
   }
+  .card .ic svg{width:23px; height:23px; display:block}
   .card h3{margin:0 0 6px; font-size:17px}
   .card p{margin:0; color:var(--muted); font-size:14.5px}
 
@@ -147,6 +186,91 @@
   footer .wrap{display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:space-between}
   footer a{color:var(--muted)}
   footer a:hover{color:var(--fg)}
+
+  /* ================= redesign: motion & hover ================= */
+
+  /* animated accent bar under every section heading */
+  section > h2::after{
+    content:""; display:block; height:3px; width:46px; margin-top:12px;
+    border-radius:3px; background:var(--accent); transition:width .6s ease .15s;
+  }
+  .js section > h2::after{width:0}
+  .js section > h2.in::after{width:46px}
+
+  /* scroll-reveal base state — only when JS is active, so no-JS shows everything.
+     Uses the independent `translate` property so hover `transform` never conflicts. */
+  .js section > h2, .js section > .sub,
+  .js #features .card, .js #how .step, .js #docs a.doc,
+  .js #usage ol.usage li, .js #actions tbody tr{
+    opacity:0;
+    transition:opacity .7s cubic-bezier(.22,.61,.36,1),
+               translate .55s cubic-bezier(.22,.61,.36,1),
+               transform .4s cubic-bezier(.2,.7,.3,1.3),
+               border-color .2s ease, box-shadow .2s ease;
+  }
+  .js section > h2, .js section > .sub,
+  .js #features .card, .js #how .step, .js #docs a.doc,
+  .js #actions tbody tr{translate:0 22px}
+  .js #usage ol.usage li{translate:-26px 0}
+
+  /* revealed — matches the base selectors' specificity (+.in) so it wins */
+  .js section > h2.in, .js section > .sub.in,
+  .js #features .card.in, .js #how .step.in, .js #docs a.doc.in,
+  .js #usage ol.usage li.in, .js #actions tbody tr.in{opacity:1; translate:none}
+
+  /* stagger siblings as a group scrolls in */
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(1){transition-delay:.03s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(2){transition-delay:.09s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(3){transition-delay:.15s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(4){transition-delay:.21s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(5){transition-delay:.27s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(6){transition-delay:.33s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(7){transition-delay:.39s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(8){transition-delay:.45s}
+  .js :is(#features .card,#how .step,#usage ol.usage li,#actions tbody tr,#docs a.doc):nth-child(9){transition-delay:.51s}
+
+  /* hover lift — cards & flow steps (transform is independent of reveal's translate) */
+  .card{transition:transform .4s cubic-bezier(.2,.7,.3,1.3), border-color .2s ease, box-shadow .2s ease}
+  .card:hover{transform:translateY(-6px); border-color:var(--accent); box-shadow:0 18px 44px rgba(0,0,0,.13)}
+  .card .ic{transition:transform .3s cubic-bezier(.2,.7,.3,1.5)}
+  .card:hover .ic{transform:translateY(-2px) scale(1.08) rotate(-6deg)}
+
+  .step{transition:transform .4s cubic-bezier(.2,.7,.3,1.3), border-color .2s ease, box-shadow .2s ease}
+  .step:hover{transform:translateY(-6px); border-color:var(--accent); box-shadow:0 18px 44px rgba(0,0,0,.13)}
+  .step::before{transition:transform .3s cubic-bezier(.2,.7,.3,1.5)}
+  .step:hover::before{transform:scale(1.12) rotate(-8deg)}
+
+  /* connecting arrows between flow steps (desktop only) */
+  @media (min-width:761px){
+    .flow .step:not(:last-child)::after{
+      content:"›"; position:absolute; top:50%; right:-13px; transform:translateY(-50%);
+      font:800 26px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--accent); opacity:.6; pointer-events:none;
+    }
+  }
+
+  /* number badges pop as their step/usage item reveals */
+  @keyframes badgePop{0%{transform:scale(.3);opacity:0} 65%{transform:scale(1.14)} 100%{transform:scale(1);opacity:1}}
+  .js #how .step.in::before,
+  .js #usage ol.usage li.in::before{animation:badgePop .55s cubic-bezier(.2,.7,.3,1.5)}
+
+  /* usage rows nudge on hover */
+  ol.usage li{transition:transform .25s ease, border-color .2s ease, box-shadow .2s ease}
+  ol.usage li:hover{transform:translateX(5px); border-color:var(--accent); box-shadow:var(--shadow)}
+
+  /* action table row highlight */
+  #actions tbody tr{transition:opacity .6s ease, background .15s ease}
+  #actions tbody tr:hover{background:var(--panel)}
+
+  /* respect users who prefer less motion */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important; animation-iteration-count:1!important; transition-duration:.001ms!important}
+    html{scroll-behavior:auto}
+    .js section > h2, .js section > .sub,
+    .js #features .card, .js #how .step, .js #docs a.doc,
+    .js #usage ol.usage li, .js #actions tbody tr{opacity:1; translate:none}
+    .js section > h2::after{width:46px}
+  }
 </style>
 </head>
 <body>
@@ -162,7 +286,7 @@
       <a href="#how">How it works</a>
       <a href="#usage">Using it</a>
       <a href="#docs">Docs</a>
-      <a class="ghbtn" href="https://github.com/Simpletruss/simpleclaw-desktop/releases">Download</a>
+      <a class="ghbtn" href="https://github.com/Simpletruss/simpleclaw-desktop/releases/latest">Download</a>
     </nav>
   </div>
 </header>
@@ -171,12 +295,37 @@
 <div class="hero wrap">
   <svg class="logo" viewBox="0 0 120 120" aria-label="SimpleClaw logo"><rect width="120" height="120" rx="26" fill="#181818"/><g transform="translate(33.6,15.4) scale(0.66)" fill="none" stroke="#FEDB00" stroke-width="4" stroke-linejoin="round"><polygon points="0 25.28 39.99 45 0 70.28"/><polygon points="80 109.71 40 90 79.99 64.71"/><polygon points="39.99 0 79.99 19.71 39.99 45"/><polygon points="40 135 0 115.28 40 90"/><polygon fill="#FEDB00" points="39.99 45 79.99 64.71 40 90"/><polygon points="39.99 45 39.99 0 0 25.28"/><polygon points="40 90 40 135 80 109.71"/><polygon fill="#FEDB00" points="40 90 39.99 45 0 70.28"/></g></svg>
   <h1>Tell your computer <span class="hl">what to do.</span><br/>SimpleClaw does it.</h1>
-  <p class="lead">A Windows desktop assistant that carries out on-screen tasks for you. Describe a goal in plain language — SimpleClaw looks at your screen and drives the mouse and keyboard until it's done.</p>
+  <p class="lead">A desktop assistant for Windows, macOS, and Linux that carries out on-screen tasks for you. Describe a goal in plain language — SimpleClaw looks at your screen and drives the mouse and keyboard until it's done.</p>
   <div class="cta">
-    <a class="btn primary" href="https://github.com/Simpletruss/simpleclaw-desktop/releases">Download for Windows</a>
+    <div class="dl" id="dl" data-open="false">
+      <button class="dl-toggle" id="dlToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="dlMenu">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7.5 9.5 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg></span>
+        <span id="dlLabel">Download</span>
+        <span class="caret" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9.5 6 6 6-6"/></svg></span>
+      </button>
+      <ul class="dl-menu" id="dlMenu" role="menu" aria-label="Choose a download" hidden>
+        <li role="none"><a class="dl-item" role="menuitem" tabindex="-1" data-os="windows" href="https://github.com/Simpletruss/simpleclaw-desktop/releases/latest">
+          <span class="dl-name"><span class="os" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449 9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-13.051-1.801"/></svg></span> Windows</span>
+          <span class="dl-sub">x64 installer (.exe)</span>
+        </a></li>
+        <li role="none"><a class="dl-item" role="menuitem" tabindex="-1" data-os="mac" href="https://github.com/Simpletruss/simpleclaw-desktop/releases/latest">
+          <span class="dl-name"><span class="os" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.037 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09M15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></span> macOS</span>
+          <span class="dl-sub">Apple Silicon (.dmg)</span>
+        </a></li>
+        <li role="none"><a class="dl-item" role="menuitem" tabindex="-1" data-os="mac" href="https://github.com/Simpletruss/simpleclaw-desktop/releases/latest">
+          <span class="dl-name"><span class="os" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.037 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09M15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></span> macOS</span>
+          <span class="dl-sub">Intel (.dmg)</span>
+        </a></li>
+        <li role="none"><a class="dl-item" role="menuitem" tabindex="-1" data-os="linux" href="https://github.com/Simpletruss/simpleclaw-desktop/releases/latest">
+          <span class="dl-name"><span class="os" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.2c-2.2 0-3.6 1.8-3.6 4.1 0 1-.4 1.9-1.1 2.9-1.1 1.5-1.9 3-1.9 4.8 0 2 1 3.7 2.5 4.8l-.9 1.6c-.3.5.1 1.1.7 1.1h1.9c.3 0 .6-.2.7-.5l.1-.4c.5.1 1 .1 1.4.1s.9 0 1.4-.1l.1.4c.1.3.4.5.7.5h1.9c.6 0 1-.6.7-1.1l-.9-1.6c1.5-1.1 2.5-2.8 2.5-4.8 0-1.8-.8-3.3-1.9-4.8-.7-1-1.1-1.9-1.1-2.9 0-2.3-1.4-4.1-3.6-4.1z"/><ellipse cx="12" cy="14.8" rx="2.6" ry="3.9" fill="var(--panel)"/><circle cx="10.7" cy="6.7" r=".65" fill="var(--panel)"/><circle cx="13.3" cy="6.7" r=".65" fill="var(--panel)"/></svg></span> Linux</span>
+          <span class="dl-sub">AppImage (.AppImage)</span>
+        </a></li>
+      </ul>
+    </div>
     <a class="btn" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/getting-started.md">Getting started</a>
     <a class="btn" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md">User guide</a>
   </div>
+  <p class="detect-note" id="detectNote" role="status" aria-live="polite"></p>
   <p class="warn">⚠️ <b>SimpleClaw takes real control of your mouse and keyboard.</b> Start with <b>Dry run</b> on, try it on a throwaway window first, and keep your hand near the <kbd>F9</kbd> emergency-stop key.</p>
 </div>
 
@@ -184,12 +333,12 @@
   <h2>Why SimpleClaw</h2>
   <p class="sub">It works with whatever is on your screen — no per-app integrations, no scripting.</p>
   <div class="grid">
-    <div class="card"><div class="ic">🗣️</div><h3>Plain-language goals</h3><p>Say what you want the outcome to be. No commands or macros to learn.</p></div>
-    <div class="card"><div class="ic">👁️</div><h3>Sees your screen</h3><p>A vision AI model reads a screenshot of your display and decides the next step.</p></div>
-    <div class="card"><div class="ic">🖱️</div><h3>Acts for you</h3><p>Clicks, types, scrolls, and uses shortcuts on your real desktop.</p></div>
-    <div class="card"><div class="ic">🧪</div><h3>Dry run by default</h3><p>Preview every planned action before letting it touch anything.</p></div>
-    <div class="card"><div class="ic">⛔</div><h3>Instant stop</h3><p>Press <kbd>F9</kbd> anywhere to abort immediately — even when unfocused.</p></div>
-    <div class="card"><div class="ic">🔌</div><h3>Bring your own model</h3><p>Connects to any OpenAI-compatible vision endpoint you configure.</p></div>
+    <div class="card"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg></div><h3>Plain-language goals</h3><p>Say what you want the outcome to be. No commands or macros to learn.</p></div>
+    <div class="card"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg></div><h3>Sees your screen</h3><p>A vision AI model reads a screenshot of your display and decides the next step.</p></div>
+    <div class="card"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.04 4.69a.5.5 0 0 1 .65-.65l16 6.5a.5.5 0 0 1-.06.95l-6.13 1.58a2 2 0 0 0-1.44 1.43l-1.58 6.13a.5.5 0 0 1-.95.06z"/></svg></div><h3>Acts for you</h3><p>Clicks, types, scrolls, and uses shortcuts on your real desktop.</p></div>
+    <div class="card"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6a2 2 0 0 0 .24.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.76-2.96l5.52-10.08A2 2 0 0 0 10 8V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg></div><h3>Dry run by default</h3><p>Preview every planned action before letting it touch anything.</p></div>
+    <div class="card"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.59 16.73A2 2 0 0 1 2 15.31V8.69a2 2 0 0 1 .59-1.42l4.68-4.68A2 2 0 0 1 8.69 2h6.62a2 2 0 0 1 1.42.59l4.68 4.68A2 2 0 0 1 22 8.69v6.62a2 2 0 0 1-.59 1.42l-4.68 4.68a2 2 0 0 1-1.42.59H8.69a2 2 0 0 1-1.42-.59z"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></div><h3>Instant stop</h3><p>Press <kbd>F9</kbd> anywhere to abort immediately — even when unfocused.</p></div>
+    <div class="card"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg></div><h3>Bring your own model</h3><p>Connects to any OpenAI-compatible vision endpoint you configure.</p></div>
   </div>
 </section>
 
@@ -249,10 +398,126 @@
 
 <footer>
   <div class="wrap">
-    <span>SimpleClaw · Windows desktop assistant · Apache-2.0</span>
+    <span>SimpleClaw · Desktop assistant for Windows, macOS &amp; Linux · Apache-2.0</span>
     <span><a href="https://github.com/Simpletruss/simpleclaw-desktop/releases">Releases</a> · <a href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md">User guide</a> · <a href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/troubleshooting.md">Troubleshooting</a></span>
   </div>
 </footer>
+
+<script>
+  /* Download dropdown: detect the visitor's OS, promote its build to the top
+     with a "Recommended" badge, and relabel the button. Degrades gracefully —
+     if the OS is unknown, every build stays listed and the label stays generic. */
+  (function () {
+    var LABELS = { windows: "Windows", mac: "macOS", linux: "Linux" };
+
+    var dl     = document.getElementById("dl");
+    var toggle = document.getElementById("dlToggle");
+    var menu   = document.getElementById("dlMenu");
+    var label  = document.getElementById("dlLabel");
+    var note   = document.getElementById("detectNote");
+    if (!dl || !toggle || !menu) return;
+
+    function detectOS() {
+      // Prefer the modern, spoof-resistant hint when the browser exposes it.
+      var uaPlatform = (navigator.userAgentData && navigator.userAgentData.platform) || "";
+      var hint = (uaPlatform + " " + (navigator.platform || "") + " " + navigator.userAgent).toLowerCase();
+      // Order matters: Android reports "linux", iOS reports "mac"-like tokens —
+      // treat those mobile cases as unknown since there's no build for them.
+      if (/android/.test(hint)) return null;
+      if (/iphone|ipad|ipod/.test(hint)) return null;
+      if (/win/.test(hint)) return "windows";
+      if (/mac/.test(hint)) return "mac";
+      if (/linux|x11|cros/.test(hint)) return "linux";
+      return null;
+    }
+
+    var os = detectOS();
+    if (os) {
+      if (label) label.textContent = "Download for " + LABELS[os];
+      // Move the detected OS's build(s) to the top, preserving their order.
+      var items = Array.prototype.slice.call(menu.querySelectorAll('li'));
+      items.filter(function (li) { return li.querySelector('.dl-item').dataset.os === os; })
+           .forEach(function (li) { menu.insertBefore(li, menu.firstChild); });
+      // Badge the first (now top) build as recommended.
+      var top = menu.querySelector('.dl-item[data-os="' + os + '"] .dl-name');
+      if (top && !top.querySelector('.dl-badge')) {
+        var badge = document.createElement('span');
+        badge.className = 'dl-badge';
+        badge.textContent = 'Recommended';
+        top.appendChild(badge);
+      }
+      if (note) note.textContent = "Detected " + LABELS[os] + " — other platforms are in the menu.";
+    } else if (note) {
+      note.textContent = "Choose your platform — builds are available for Windows, macOS, and Linux.";
+    }
+
+    // ----- open / close + keyboard behaviour -----
+    var menuItems = Array.prototype.slice.call(menu.querySelectorAll('.dl-item'));
+
+    function setOpen(open) {
+      dl.dataset.open = open ? "true" : "false";
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      menu.hidden = !open;
+    }
+    function open(focusFirst) {
+      setOpen(true);
+      if (focusFirst && menuItems[0]) menuItems[0].focus();
+    }
+    function close(returnFocus) {
+      setOpen(false);
+      if (returnFocus) toggle.focus();
+    }
+    function focusAt(i) {
+      var n = menuItems.length;
+      menuItems[(i + n) % n].focus();
+    }
+
+    toggle.addEventListener("click", function () {
+      dl.dataset.open === "true" ? close(false) : open(false);
+    });
+    toggle.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") { e.preventDefault(); open(true); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); open(false); focusAt(-1); }
+    });
+    menu.addEventListener("keydown", function (e) {
+      var i = menuItems.indexOf(document.activeElement);
+      if (e.key === "ArrowDown") { e.preventDefault(); focusAt(i + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); focusAt(i - 1); }
+      else if (e.key === "Home") { e.preventDefault(); focusAt(0); }
+      else if (e.key === "End") { e.preventDefault(); focusAt(-1); }
+      else if (e.key === "Escape") { e.preventDefault(); close(true); }
+      else if (e.key === "Tab") { close(false); }
+    });
+    document.addEventListener("click", function (e) {
+      if (!dl.contains(e.target)) close(false);
+    });
+  })();
+</script>
+
+<script>
+  /* Scroll-reveal: fade/slide each section's content in as it enters view.
+     No-JS users never hit the hidden base state (it's scoped to .js), and if
+     IntersectionObserver is missing we simply show everything at once. */
+  (function () {
+    var els = document.querySelectorAll(
+      "section > h2, section > .sub, #features .card, #how .step, " +
+      "#docs a.doc, #usage ol.usage li, #actions tbody tr"
+    );
+    if (!("IntersectionObserver" in window)) {
+      els.forEach(function (el) { el.classList.add("in"); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("in");
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: "0px 0px -8% 0px" });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
 
 </body>
 </html>

@@ -8,12 +8,16 @@ This page takes you from zero to your first task in a few minutes.
 
 ## 1. Install SimpleClaw
 
-1. Download the latest **`SimpleClaw-<version>-setup.exe`** from the
-   [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
-2. Run the installer and follow the prompts (you can choose the install folder).
-3. Launch **SimpleClaw** from the Start menu or the desktop shortcut.
+1. Open the [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases/latest)
+   and download the build for your operating system:
+   - **Windows** — the `.exe` installer
+   - **macOS** — the `.dmg` disk image
+   - **Linux** — the `.AppImage` (make it executable, then run it)
+2. Run the installer/app and follow the prompts.
+3. Launch **SimpleClaw** from your applications menu, Start menu, or desktop shortcut.
 
-> **Windows 10 or 11** is required.
+> Supported on **Windows 10/11**, **macOS**, and **Linux**. On the website the
+> download button detects your OS automatically.
 
 ## 2. Connect your AI model
 
