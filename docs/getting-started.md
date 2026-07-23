@@ -9,7 +9,7 @@ This page takes you from zero to your first task in a few minutes.
 ## 1. Install SimpleClaw
 
 1. Download the latest **`SimpleClaw-<version>-setup.exe`** from the
-   [Releases page](../../../releases).
+   [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 2. Run the installer and follow the prompts (you can choose the install folder).
 3. Launch **SimpleClaw** from the Start menu or the desktop shortcut.
 

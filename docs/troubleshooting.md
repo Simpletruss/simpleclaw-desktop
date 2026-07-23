@@ -20,4 +20,4 @@ Quick fixes for the most common issues.
 
 - Re-read [Getting started](getting-started.md) to confirm setup.
 - Check the [User guide](user-guide.md) settings reference.
-- Make sure you're on the latest build from the [Releases page](../../../releases).
+- Make sure you're on the latest build from the [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).

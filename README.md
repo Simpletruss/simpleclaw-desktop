@@ -13,10 +13,10 @@ vision AI model, and drives the mouse and keyboard until the task is finished.
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0a0a0a?style=flat-square)
 ![License](https://img.shields.io/badge/license-Apache--2.0-FEDB00?style=flat-square&labelColor=0a0a0a)
 [![Website](https://img.shields.io/badge/docs-website-FEDB00?style=flat-square&labelColor=0a0a0a)](https://simpletruss.github.io/simpleclaw-desktop/)
-[![Download](https://img.shields.io/badge/download-Releases-0a0a0a?style=flat-square)](../../releases)
+[![Download](https://img.shields.io/badge/download-Releases-0a0a0a?style=flat-square)](https://github.com/Simpletruss/simpleclaw-desktop/releases)
 
 [**🌐 Website**](https://simpletruss.github.io/simpleclaw-desktop/) ·
-[**⬇ Download**](../../releases) ·
+[**⬇ Download**](https://github.com/Simpletruss/simpleclaw-desktop/releases) ·
 [**🚀 Getting started**](docs/getting-started.md) ·
 [**📖 User guide**](docs/user-guide.md)
 
@@ -52,7 +52,7 @@ time. SimpleClaw is the "hands and eyes"; the AI model you connect it to is the
 ## Quick start
 
 1. **Install** — download the latest `SimpleClaw-<version>-setup.exe` from
-   [Releases](../../releases) and run it.
+   [Releases](https://github.com/Simpletruss/simpleclaw-desktop/releases) and run it.
 2. **Connect your model** — open **⚙ Settings** and set the **Base URL**,
    **API key**, and **Model name** for your OpenAI-compatible vision endpoint.
 3. **Run a task** — type a goal, keep **Dry run** ON to preview, then turn it off
