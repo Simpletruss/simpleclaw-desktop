@@ -37,6 +37,13 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
+**New in 0.3 — it can also work off-screen.** Point an agent at a website and it runs
+in its own **headless browser**, sealed to that site: nothing touches your screen or
+mouse, so you keep working while the task runs. Sign in to it **once by hand** and
+later runs start already signed in — and you can **take the controls** yourself
+mid-run whenever a step needs a human (a login, a 2FA code, or an agent that's stuck).
+See [Where the agent works](docs/user-guide.md#where-the-agent-works-scope).
+
 ## How it works
 
 ```
@@ -87,6 +94,9 @@ On every loop the model chooses exactly one action:
 - **Dry run (default ON)** — preview actions without executing them.
 - **Emergency stop `F9`** — aborts instantly, even when SimpleClaw isn't focused.
 - **Step delay & max steps** — paced and capped so it can't run away.
+- **Scope** — confine an agent to one window, or to a headless browser sealed to a
+  single site, instead of your whole desktop. Note that a browser agent you've signed
+  in **acts with your account's authority** on that site.
 
 More → [Safety & privacy](docs/safety-and-privacy.md).
 
@@ -94,8 +104,9 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 
 ## Documentation
 
-> **These docs describe SimpleClaw 0.2.x** — the current release. On an older build?
+> **These docs describe SimpleClaw 0.3.x** — the current release. On an older build?
 > Read the docs from that release's tag:
+> [0.2.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.2.0/docs) ·
 > [0.1.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1.2/docs).
 > Every version is listed on [Releases](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
@@ -103,16 +114,28 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 |-------|--------------|
 | [🌐 Website](https://simpletruss.github.io/simpleclaw-desktop/) | The polished overview and hub. |
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
-| [📖 User guide](docs/user-guide.md) | Interface, settings, actions, and tips. |
-| [🧩 Plugin developer guide](docs/plugins.md) | **New in 0.2** — extend SimpleClaw with plugins (no rebuild). |
+| [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, and tips. |
+| [🧩 Plugin developer guide](docs/plugins.md) | Extend SimpleClaw with plugins, no rebuild (0.2 and later). |
 | [🔒 Safety & privacy](docs/safety-and-privacy.md) | Guardrails, safe use, data handling. |
 | [🛠 Troubleshooting](docs/troubleshooting.md) | Fixes for common issues. |
 
 ## Requirements
 
-- **Windows 10 or 11.**
+**A desktop OS** — Windows, macOS, or Linux:
+
+| Platform | Download | Notes |
+|----------|----------|-------|
+| **Windows 10 / 11** (x64) | `.exe` installer | Updates itself in the background. |
+| **macOS** (Intel & Apple Silicon) | universal `.dmg` / `.zip` | Not code-signed yet — on first launch **right-click → Open** to get past Gatekeeper. Grant **Screen Recording** and **Accessibility** under *System Settings → Privacy & Security*, or it can't see the screen or move the pointer. Update by downloading the newer `.dmg`. |
+| **Linux** (x64) | `.AppImage` | `chmod +x` it, then run. **X11 works best** — under Wayland the compositor may block screen capture and the global `F9` hotkey. |
+
+Also needed:
+
 - A **vision-capable AI model** reachable at an OpenAI-compatible
   `/v1/chat/completions` endpoint (base URL, API key, model name).
+- **Google Chrome or Microsoft Edge** — only for the
+  [headless-browser scope](docs/user-guide.md#where-the-agent-works-scope). The
+  desktop and window scopes don't need it.
 
 ## License
 
