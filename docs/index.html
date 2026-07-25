@@ -52,6 +52,16 @@
     padding:8px 14px!important; font-weight:700!important;
   }
   .ghbtn:hover{filter:brightness(1.05)}
+  /* version chip: which release these docs describe */
+  .verchip{
+    display:inline-flex; align-items:center; gap:5px; text-decoration:none;
+    font-size:12.5px; font-weight:700; letter-spacing:.2px; color:var(--fg);
+    background:var(--panel2); border:1px solid var(--border);
+    padding:3px 9px; border-radius:999px; white-space:nowrap;
+  }
+  .verchip:hover{border-color:var(--accent)}
+  .verchip:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+  .verchip .dot{width:6px; height:6px; border-radius:50%; background:var(--accent)}
 
   /* ---- hero ---- */
   .hero{padding:72px 0 40px; text-align:center}
@@ -109,6 +119,13 @@
     color:var(--accent-ink); background:var(--accent); padding:2px 7px; border-radius:6px; margin-left:auto;
   }
   .detect-note{margin:12px auto 0; font-size:13px; color:var(--muted); text-align:center}
+  .vernote{
+    margin:0 0 26px; font-size:14px; color:var(--muted); max-width:640px;
+    background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--accent);
+    border-radius:10px; padding:10px 14px;
+  }
+  .vernote b{color:var(--fg)}
+  .vernote a{color:var(--fg); text-decoration:underline; text-underline-offset:2px}
 
   /* ---- sections ---- */
   section.wrap{padding:76px 20px 64px; border-top:1px solid var(--border)}
@@ -281,6 +298,9 @@
       <svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" rx="26" fill="#181818"/><g transform="translate(33.6,15.4) scale(0.66)" fill="none" stroke="#FEDB00" stroke-width="4" stroke-linejoin="round"><polygon points="0 25.28 39.99 45 0 70.28"/><polygon points="80 109.71 40 90 79.99 64.71"/><polygon points="39.99 0 79.99 19.71 39.99 45"/><polygon points="40 135 0 115.28 40 90"/><polygon fill="#FEDB00" points="39.99 45 79.99 64.71 40 90"/><polygon points="39.99 45 39.99 0 0 25.28"/><polygon points="40 90 40 135 80 109.71"/><polygon fill="#FEDB00" points="40 90 39.99 45 0 70.28"/></g></svg>
       <span class="n">Simple<b>Claw</b></span>
     </a>
+    <a class="verchip" href="https://github.com/Simpletruss/simpleclaw-desktop/releases/latest" title="These docs describe SimpleClaw 0.2.x">
+      <span class="dot" aria-hidden="true"></span>Docs v0.2.x
+    </a>
     <nav class="links">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
@@ -389,6 +409,13 @@
 <section id="docs" class="wrap">
   <h2>Documentation</h2>
   <p class="sub">Full guides you can read here or browse on GitHub.</p>
+  <p class="vernote">
+    These guides describe <b>SimpleClaw 0.2.x</b> — the current release. Running an older
+    build? Read the docs from that release's tag:
+    <a href="https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1.2/docs">0.1.x docs</a>
+    (plugins don't exist in 0.1.x). Every tagged version is listed on
+    <a href="https://github.com/Simpletruss/simpleclaw-desktop/releases">Releases</a>.
+  </p>
   <div class="doclinks">
     <a class="doc" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/getting-started.md"><h3>Getting started <span class="arw">→</span></h3><p>Install, connect your model, and run your first task.</p></a>
     <a class="doc" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md"><h3>User guide <span class="arw">→</span></h3><p>The complete manual: interface, settings, actions, and tips.</p></a>
@@ -400,7 +427,7 @@
 
 <footer>
   <div class="wrap">
-    <span>SimpleClaw · Desktop assistant for Windows, macOS &amp; Linux · Apache-2.0</span>
+    <span>SimpleClaw · Desktop assistant for Windows, macOS &amp; Linux · Apache-2.0 · Docs for v0.2.x</span>
     <span><a href="https://github.com/Simpletruss/simpleclaw-desktop/releases">Releases</a> · <a href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md">User guide</a> · <a href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/troubleshooting.md">Troubleshooting</a></span>
   </div>
 </footer>

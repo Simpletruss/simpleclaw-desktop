@@ -2,6 +2,10 @@
 
 [← Docs home](index.html) · [Getting started](getting-started.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
+> **Applies to SimpleClaw 0.2.x** (current release). On an older build? Read the
+> [0.1.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1.2/docs) ·
+> every version is listed on [Releases](https://github.com/Simpletruss/simpleclaw-desktop/releases).
+
 The complete manual for SimpleClaw 0.2 (Windows, macOS, and Linux).
 
 ---
@@ -121,7 +125,7 @@ sequence of small, visible steps.
 | **Max steps** | Cap on actions per run | Default about 30. Stops runaway loops; increase for longer tasks. |
 
 > Exact labels and defaults may vary slightly by version; values reflect
-> SimpleClaw 0.1.x.
+> SimpleClaw 0.2.x.
 
 ## Extending SimpleClaw (plugins)
 
@@ -148,7 +152,7 @@ working tool-calling example into a folder you can read and adapt; the mechanics
 
 ## Current limitations
 
-SimpleClaw 0.1.x is an early release:
+SimpleClaw 0.2.x is still an early release:
 
 - **Primary display only** — it captures and acts on your main monitor.
 - **No built-in browser or remote-machine control** — it drives the local screen.

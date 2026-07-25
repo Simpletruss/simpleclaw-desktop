@@ -2,14 +2,14 @@
 
 [← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
+> **Applies to SimpleClaw 0.2.x** (current release). On an older build? Read the
+> [0.1.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1.2/docs) ·
+> every version is listed on [Releases](https://github.com/Simpletruss/simpleclaw-desktop/releases).
+> **Plugins do not exist in 0.1.x** — you need 0.2.0 or later for anything on this page.
+
 **New in SimpleClaw 0.2.** This is the complete reference for writing, installing, and
 distributing plugins. It's aimed at developers — if you just want to *use* a plugin
 someone gave you, skip to [Install a plugin](#install-a-plugin).
-
-> **Reading the right version.** Plugins do not exist in 0.1.x. This page documents the
-> 0.2 plugin framework. For the docs that match an older build, browse that release's
-> tag, e.g.
-> [`tree/v0.1/docs`](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1/docs).
 
 ---
 

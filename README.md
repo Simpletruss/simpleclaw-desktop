@@ -94,6 +94,11 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 
 ## Documentation
 
+> **These docs describe SimpleClaw 0.2.x** — the current release. On an older build?
+> Read the docs from that release's tag:
+> [0.1.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1.2/docs).
+> Every version is listed on [Releases](https://github.com/Simpletruss/simpleclaw-desktop/releases).
+
 | Guide | What's in it |
 |-------|--------------|
 | [🌐 Website](https://simpletruss.github.io/simpleclaw-desktop/) | The polished overview and hub. |
