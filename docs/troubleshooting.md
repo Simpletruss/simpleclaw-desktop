@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Safety & privacy](safety-and-privacy.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md)
 
 Quick fixes for the most common issues.
 

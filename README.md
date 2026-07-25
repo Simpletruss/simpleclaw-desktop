@@ -99,6 +99,7 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 | [🌐 Website](https://simpletruss.github.io/simpleclaw-desktop/) | The polished overview and hub. |
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
 | [📖 User guide](docs/user-guide.md) | Interface, settings, actions, and tips. |
+| [🧩 Plugin developer guide](docs/plugins.md) | **New in 0.2** — extend SimpleClaw with plugins (no rebuild). |
 | [🔒 Safety & privacy](docs/safety-and-privacy.md) | Guardrails, safe use, data handling. |
 | [🛠 Troubleshooting](docs/troubleshooting.md) | Fixes for common issues. |
 

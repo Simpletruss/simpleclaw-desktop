@@ -1,8 +1,8 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
-The complete manual for SimpleClaw 0.1.x (Windows, macOS, and Linux).
+The complete manual for SimpleClaw 0.2 (Windows, macOS, and Linux).
 
 ---
 
@@ -15,8 +15,9 @@ The complete manual for SimpleClaw 0.1.x (Windows, macOS, and Linux).
 5. [Writing good goals](#writing-good-goals)
 6. [Action types](#action-types)
 7. [Settings reference](#settings-reference)
-8. [Current limitations](#current-limitations)
-9. [Glossary](#glossary)
+8. [Extending SimpleClaw (plugins)](#extending-simpleclaw-plugins)
+9. [Current limitations](#current-limitations)
+10. [Glossary](#glossary)
 
 ---
 
@@ -121,6 +122,29 @@ sequence of small, visible steps.
 
 > Exact labels and defaults may vary slightly by version; values reflect
 > SimpleClaw 0.1.x.
+
+## Extending SimpleClaw (plugins)
+
+**Plugins** add behavior to SimpleClaw without reinstalling or rebuilding it — you drop a
+folder in from **⚙ Settings → Plugins** and it takes effect. A plugin contributes a
+**sub-agent** that runs *inside* a task to shape how it goes — for example a **completion
+check** that inspects the finished screen and sends the agent back if the job isn't really
+done, or a per-step check.
+
+Installing makes a plugin available to the whole organization; it only affects an agent
+once you **add it** on that agent's **Sub-Agents** tab. To build your own, see the
+**[Plugin developer guide](plugins.md)**.
+
+**Plugins can use tools.** A plugin that runs its own logic can call an AI model and give
+it **tools** to invoke directly — actions like "record a lesson to memory", "nudge the
+run", or "send it back to keep working" — instead of coaxing the model to reply in a fixed
+text format and parsing that. This *native tool-calling* is more reliable and is how the
+built-in **Observer** learns. **Settings → Plugins → Observer → Install** drops a complete,
+working tool-calling example into a folder you can read and adapt; the mechanics are in the
+[developer guide](plugins.md#native-tools-tool-calling).
+
+> **Pacing / time limits** (e.g. "finish within 10 minutes") aren't a plugin — they're
+> built in as **Chronos**, configured on each agent's **Chronos** tab.
 
 ## Current limitations
 

@@ -1,6 +1,6 @@
 # Getting started
 
-[← Docs home](index.html) · [User guide](user-guide.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [User guide](user-guide.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 This page takes you from zero to your first task in a few minutes.
 
