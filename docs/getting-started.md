@@ -2,10 +2,9 @@
 
 [← Docs home](index.html) · [User guide](user-guide.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
-> **Applies to SimpleClaw 0.3.x** (current release). On an older build? Read the
-> [0.2.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.2.0/docs) ·
-> [0.1.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1.2/docs) ·
-> every version is listed on [Releases](https://github.com/Simpletruss/simpleclaw-desktop/releases).
+> **Version note.** This file is the copy in whatever branch or tag you're browsing.
+> The [docs site](https://simpletruss.github.io/simpleclaw-desktop/getting-started.html)
+> labels each page with its release and can switch between versions.
 
 This page takes you from zero to your first task in a few minutes.
 

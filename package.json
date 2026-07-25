@@ -1,0 +1,17 @@
+{
+  "name": "simpleclaw-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build for the versioned SimpleClaw docs site: renders docs/ (and each released tag's docs/) into dist/.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node tools/build-docs.mjs"
+  },
+  "dependencies": {
+    "marked": "18.0.7"
+  }
+}

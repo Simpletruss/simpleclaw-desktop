@@ -1,0 +1,17 @@
+{
+  "_readme": [
+    "Single source of truth for the docs site. No other file hardcodes a version number.",
+    "'ref' is the git ref whose docs/ folder supplies that version's content;",
+    "'.' means this working tree (which is main when the site is built in CI).",
+    "To publish a new series: tag the release, add an entry at the top of 'versions',",
+    "and point 'latest' at it. Everything else — banners, switcher, footers — follows."
+  ],
+  "siteUrl": "https://simpletruss.github.io/simpleclaw-desktop/",
+  "releasesUrl": "https://github.com/Simpletruss/simpleclaw-desktop/releases",
+  "latest": "0.3",
+  "versions": [
+    { "series": "0.3", "label": "0.3.x", "ref": ".", "note": "current release" },
+    { "series": "0.2", "label": "0.2.x", "ref": "v0.2.0" },
+    { "series": "0.1", "label": "0.1.x", "ref": "v0.1.2" }
+  ]
+}

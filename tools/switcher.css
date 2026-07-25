@@ -1,0 +1,64 @@
+/* Version switcher + version notice.
+   Injected into every built page (rendered guides and the hand-written landing
+   page alike) so old releases get today's chrome. Uses the site's own custom
+   properties, so it inherits light/dark automatically. */
+
+.vsw{position:relative; flex:0 0 auto}
+.vsw>summary{
+  display:inline-flex; align-items:center; gap:6px; cursor:pointer; list-style:none;
+  font-size:12.5px; font-weight:700; letter-spacing:.2px; color:var(--fg);
+  background:var(--panel2); border:1px solid var(--border);
+  padding:4px 10px; border-radius:999px; white-space:nowrap;
+}
+.vsw>summary::-webkit-details-marker{display:none}
+.vsw>summary:hover{border-color:var(--accent)}
+.vsw>summary:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+.vsw .dot{width:6px; height:6px; border-radius:50%; background:var(--accent); flex:0 0 auto}
+.vsw .cx{font-size:10px; color:var(--muted); transition:transform .18s ease}
+.vsw[open] .cx{transform:rotate(180deg)}
+
+.vsw-menu{
+  position:absolute; top:calc(100% + 8px); left:0; z-index:60;
+  width:max(240px,100%); padding:8px;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:14px; box-shadow:var(--shadow);
+}
+.vsw-h{
+  margin:2px 8px 6px; font-size:11px; font-weight:800; letter-spacing:.6px;
+  text-transform:uppercase; color:var(--muted);
+}
+.vsw-menu ul{margin:0; padding:0; list-style:none}
+.vsw-menu li+li{margin-top:2px}
+.vsw-menu a{
+  display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--fg);
+  font-size:14px; font-weight:600; padding:8px 10px; border-radius:9px;
+}
+.vsw-menu a:hover,.vsw-menu a:focus-visible{background:var(--panel2); outline:none}
+.vsw-menu a:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+.vsw-menu a[aria-current]{background:var(--panel2)}
+.vsw-menu em{
+  margin-left:auto; font-style:normal; font-size:11px; font-weight:700;
+  letter-spacing:.3px; text-transform:uppercase; color:var(--muted);
+}
+.vsw-menu a[aria-current] em{color:var(--accent-ink); background:var(--accent); padding:2px 6px; border-radius:5px}
+.vsw-f{margin:6px 8px 2px; font-size:12.5px}
+.vsw-f a{color:var(--muted); text-decoration:none}
+.vsw-f a:hover{color:var(--fg)}
+
+/* "you are reading an archived version" strip */
+.archived{
+  background:var(--panel); border-bottom:1px solid var(--border);
+  border-left:4px solid var(--accent); font-size:14px; color:var(--muted);
+}
+.archived .wrap{padding:11px 20px}
+.archived b{color:var(--fg)}
+.archived a{color:var(--fg); text-decoration:underline; text-underline-offset:2px}
+
+/* generated version list on the landing page */
+.vernote{
+  margin:0 0 26px; font-size:14px; color:var(--muted); max-width:640px;
+  background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--accent);
+  border-radius:10px; padding:10px 14px;
+}
+.vernote b{color:var(--fg)}
+.vernote a{color:var(--fg); text-decoration:underline; text-underline-offset:2px}

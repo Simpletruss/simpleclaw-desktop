@@ -2,10 +2,9 @@
 
 [← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Plugins](plugins.md) · [Troubleshooting](troubleshooting.md)
 
-> **Applies to SimpleClaw 0.3.x** (current release). On an older build? Read the
-> [0.2.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.2.0/docs) ·
-> [0.1.x docs](https://github.com/Simpletruss/simpleclaw-desktop/tree/v0.1.2/docs) ·
-> every version is listed on [Releases](https://github.com/Simpletruss/simpleclaw-desktop/releases).
+> **Version note.** This file is the copy in whatever branch or tag you're browsing.
+> The [docs site](https://simpletruss.github.io/simpleclaw-desktop/safety-and-privacy.html)
+> labels each page with its release and can switch between versions.
 
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
