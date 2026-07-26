@@ -13,6 +13,11 @@ screen to an AI model. Please read this page before using it on real work.
 > computer. Read [Letting another program drive it](#letting-another-program-drive-it) before
 > you use it — it hands the keys to software rather than to a person.
 
+> **New in 0.4.2:** an agent can be given **REST API access** — permission to call an
+> HTTP API directly instead of clicking through its interface. This is off by default,
+> and it is the first feature that lets SimpleClaw send data somewhere other than your
+> model endpoint. See [Agents that call an API](#agents-that-call-an-api).
+
 > **From 0.3:** an agent can run in a **headless browser** instead of on your real
 > screen, and it can **stay signed in** to that site between runs. That removes some
 > risks and adds a different one — see
@@ -33,6 +38,9 @@ screen to an AI model. Please read this page before using it on real work.
   can't loop forever.
 - **Scope** — an agent can be confined to a **single window**, or to a **headless
   browser** sealed to one site, instead of having your whole desktop available.
+- **REST access is off, empty, and read-only until you say otherwise** — an agent gets
+  no API tool at all until you both switch it on and name the hosts it may call, and
+  even then it can only read (`GET`) unless you allow writes.
 
 ## Safe-use habits
 
@@ -91,6 +99,43 @@ performing**, so one last action may land as you take over. Control returns to t
 agent only when you explicitly hand it back (**Hand back** or `Esc`), never because
 your mouse left the panel.
 
+## Agents that call an API
+
+*New in 0.4.2.* An agent can be granted **REST API access**: one tool that fetches from
+an HTTP API directly, instead of opening the site and reading values off the screen. It
+is configured per agent, on that agent's page under **Planner → Tools**.
+
+It is per agent on purpose. Which system an agent may reach — and whose credentials it
+carries — belongs to that agent's job. A scheduling agent and a billing agent reach
+different systems, and neither should be holding the other's token.
+
+**Why this needs care.** The agent decides what to fetch by reading its screen, and that
+screen shows text SimpleClaw did not write: web pages, ticket bodies, email. Text like
+that can try to talk the agent into making a request you never wanted. The protections
+are therefore about limiting the damage such an instruction could do:
+
+- **A host allowlist you write yourself.** The agent can only call hosts you name. An
+  empty list means it gets no tool at all — not "everything allowed". The list is
+  re-checked on every redirect, so a page cannot bounce the agent somewhere else.
+- **Reads only, by default.** `POST`/`PUT`/`PATCH`/`DELETE` need a separate switch.
+- **Credentials the model never sees.** Tokens are stored with the agent and attached to
+  the request by SimpleClaw itself, so they are not in the AI model's prompt and not in
+  the saved history of a run. They are also dropped if a redirect leads to another host.
+- **Bounded responses.** A reply is truncated before the agent reads it, so a huge
+  response cannot crowd out the task the agent was given.
+- **Internal addresses stay out of reach.** Cloud metadata and other link-local
+  addresses are always refused, even if something resolves to them.
+
+**What to decide before enabling it:**
+
+- List the **narrowest hosts** that do the job, not a whole domain, and prefer
+  `api.example.com` over `*.example.com`.
+- Use a **dedicated credential with the least access** the task needs — a read-only key
+  where you can get one.
+- Leave **writes off** unless the agent's job genuinely is to change data.
+- Remember the token is **stored unencrypted** with the agent, the same as your model API
+  key (see [Privacy and data handling](#privacy-and-data-handling)).
+
 ## Letting another program drive it
 
 *New in 0.4.* SimpleClaw exposes a local [Agent API](agent-api.md), letting another program —
@@ -144,8 +189,17 @@ but be clear about what is reachable once you do.
   It is **not encrypted**, so:
   - use a key **dedicated to this app**, and
   - protect physical and account access to your machine.
-- SimpleClaw talks only to the model endpoint you set. It has no other backend
-  and sends your data nowhere else.
+  Any **API credentials** you give an agent for [REST access](#agents-that-call-an-api)
+  are stored the same way — unencrypted, in that agent's own folder.
+- **SimpleClaw has no backend of its own.** It never reports to a server we run. The only
+  places your data goes are ones you configure:
+  - the **model endpoint** you set, which receives the screenshots and the task;
+  - any **API host you allowlist** for an agent, if you turn on REST access (0.4.2+) —
+    including the request bodies that agent sends;
+  - the **site an agent works on**, for a headless-browser agent.
+
+  Nothing else. If you have not enabled REST access, the model endpoint is the only
+  destination.
 
 ## If something goes wrong
 

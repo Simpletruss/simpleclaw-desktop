@@ -27,12 +27,13 @@ The complete manual for SimpleClaw 0.4 (Windows, macOS, and Linux).
 4. [Running a task](#running-a-task)
 5. [Where the agent works (Scope)](#where-the-agent-works-scope)
 6. [Letting another agent drive it](#letting-another-agent-drive-it)
-7. [Writing good goals](#writing-good-goals)
-8. [Action types](#action-types)
-9. [Settings reference](#settings-reference)
-10. [Extending SimpleClaw (plugins)](#extending-simpleclaw-plugins)
-11. [Current limitations](#current-limitations)
-12. [Glossary](#glossary)
+7. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
+8. [Writing good goals](#writing-good-goals)
+9. [Action types](#action-types)
+10. [Settings reference](#settings-reference)
+11. [Extending SimpleClaw (plugins)](#extending-simpleclaw-plugins)
+12. [Current limitations](#current-limitations)
+13. [Glossary](#glossary)
 
 ---
 
@@ -213,6 +214,46 @@ In short:
 The endpoints, the event stream, and the rules a calling agent must follow →
 **[Agent API](agent-api.md)**.
 
+## Calling an API instead of a UI
+
+*New in 0.4.2.*
+
+Some of what an agent needs is available as an API. Reading it off a screen then means
+opening a page, finding the row, and squinting at a number — slower and easier to get
+wrong than simply asking for it. So an agent can be given **REST API access**: one tool
+that fetches from an HTTP API and hands the response back as text.
+
+You configure it on the agent's own page, under **Planner → Tools → REST API access**.
+It belongs to the agent rather than to the app, because which system an agent should
+reach depends on its job — and so does whose credentials it should carry.
+
+To turn it on you need two things:
+
+1. **Enabled**, and
+2. at least one **allowed host** (e.g. `api.example.com`, one per line;
+   `*.example.com` covers subdomains).
+
+Until both are set the agent has no API tool at all. That is deliberate: a tool the agent
+can see is a tool it will try, so an unconfigured one would only waste steps getting
+refused.
+
+The rest of the settings:
+
+| Setting | What it does |
+|---------|--------------|
+| **Allow writes** | Off = the agent may only read (`GET`/`HEAD`). On = it may also `POST`/`PUT`/`PATCH`/`DELETE`. |
+| **Credentials** | A header to attach per host — e.g. `Authorization: Bearer …`. Added by SimpleClaw, never shown to the AI model. |
+| **Truncate response at** | How much of a reply the agent reads. Long responses are cut so they can't crowd out the task. |
+| **Timeout** | How long to wait for a response before giving up. |
+
+Two things worth knowing:
+
+- **The agent won't use it just because it exists.** It defaults to doing things the way
+  a person would — on screen. Tell it in the agent's persona or a skill which endpoints
+  are available and when to prefer them.
+- **Read the safety notes first.** This is the one feature that sends your data somewhere
+  other than your model endpoint → **[Agents that call an API](safety-and-privacy.md#agents-that-call-an-api)**.
+
 ## Writing good goals
 
 - **Be specific about the outcome.** "Open Notepad, type 'hello world', and save
@@ -225,22 +266,42 @@ The endpoints, the event stream, and the rules a calling agent must follow →
 
 ## Action types
 
-On each step the model chooses **one** action:
+On each step the model chooses **one** action. The pointer ones say *what* to click
+rather than *where* — the agent describes the element ("Sell button on the right panel")
+and SimpleClaw finds it, checks the spot, and acts, all within the one step.
 
 | Action | What it does |
 |--------|--------------|
-| `click` | Single left-click at a target point. |
-| `left_double` | Double-click (e.g. to open an item). |
-| `right_single` | Right-click (context menus). |
-| `drag` | Press, move, and release — drag from one point to another. |
-| `hotkey` | Press a keyboard shortcut (e.g. Ctrl+S). |
-| `type` | Type a string of text. |
-| `scroll` | Scroll the view up or down. |
-| `wait` | Pause briefly (e.g. to let something load). |
-| `finished` | Declare the task complete — this ends the run. |
+| `click` | Click the described element. |
+| `double` | Double-click it — e.g. to open a desktop icon. |
+| `right` | Right-click it, to open a context menu. |
+| `hover` | Move the pointer onto it **without** clicking. Two uses: reveal the tooltip of a value that is cut off on screen, and aim the next `scroll` at an open menu or an inner panel. |
+| `input` | Type into a field, locating and focusing it first if it isn't already. Clears the field, so it *replaces* rather than appends. |
+| `type` | Type into the field that is **already** focused — no locating, so it can't drift onto a neighbouring icon. |
+| `hotkey` | Press a keyboard shortcut, e.g. `ctrl c`, `enter`, `end`. |
+| `scroll` | Scroll up, down, left or right. |
+| `zoom_in` / `zoom_out` | Zoom the view in or out. |
+| `launch_app` | Open or activate an app **by name** — more reliable than clicking a taskbar icon. For a browser it can go straight to a URL. |
+| `read_clipboard` | Read the clipboard as text. This is how a long answer or document is captured in one step: copy it, then read it here, instead of scrolling through it. |
+| `wait` | Pause a few seconds and look again, touching nothing — for a page that is still loading. |
+| `finished` | Declare the task complete, with the answer or summary. Ends the run. |
+| `call_user` | Stop and hand back to you, explaining what it needs. |
 
 SimpleClaw performs exactly one action per loop, so complex tasks complete as a
 sequence of small, visible steps.
+
+A few more appear only in the situations that call for them:
+
+| Action | Present when |
+|--------|--------------|
+| `read_text` | The agent works in a browser — reads the page's visible text in one step. |
+| `open_skill` | It has skills held back as summaries — loads one's full instructions. |
+| `complete_step` | The run has a plan — ticks off the current item and moves to the next. |
+| `rest_request` | It has [API access](#calling-an-api-instead-of-a-ui) (0.4.2+, off by default) — fetches from an allowlisted HTTP API instead of using that system's interface. |
+| *MCP tools* | You attached an MCP server to the agent — its tools are offered alongside these. |
+
+> Names and wording follow SimpleClaw 0.4.2. Earlier versions used a lower-level
+> vocabulary (`left_double`, `right_single`) that named a point instead of an element.
 
 ## Settings reference
 
@@ -254,6 +315,7 @@ sequence of small, visible steps.
 | **Nav settle** | Extra pause after an action that navigates | Default 0.5 s, added on top of Step delay only after a click or an Enter-terminated entry, so the next screenshot isn't of the old page. Raise it for slow-loading sites. |
 | **Max steps** | Cap on actions per run | Default 30. Stops runaway loops; increase for longer tasks. |
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
+| **REST API access** | Whether this agent may call an HTTP API | Set per agent (**Planner → Tools**), not app-wide. Off by default, and needs at least one allowed host — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
 
 > Exact labels and defaults may vary slightly by version; values reflect
 > SimpleClaw 0.4.x.

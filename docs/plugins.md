@@ -208,7 +208,7 @@ Notes that matter when you write one:
 | `type` | no | Built-in to bind when there's no `entry` (`judge` \| `observer`). |
 | `prompt` | no | Prompt/rubric override (for built-in types). An `instruction.md` next to the manifest overrides this. |
 | `model` | no | A sub-agent's *default* standalone endpoint: `{ provider, baseUrl, apiKey, model, temperature, maxTokens, reasoningEffort }`. This is a fallback — the per-agent **Model** setting overrides it. See [The model a plugin runs on](#the-model-a-plugin-runs-on). |
-| `mcpServerIds` | no | Ids of MCP servers this plugin may call via `ctx.mcp`. |
+| `mcpServerIds` | no | Ids of MCP servers this plugin intends to call via `ctx.mcp`. Declared intent, not a sandbox — see [Calling tools](#calling-tools-mcp-and-built-in). |
 | `skills` | no | Skill names to enable for this plugin. |
 | `params` | no | Free-form; reaches the plugin as `ctx.manifest.params`. Fixed at author time — for *user-editable* config use `settings`. |
 | `settings` | no | A settings-panel schema. Rendered as a per-agent config UI; values arrive as `ctx.settings`. See [Settings panels](#settings-panels-optional-config-ui). |
@@ -308,18 +308,29 @@ channels below.
 | `ctx.requestStop(reason)` | Ask the run to stop. Honored where the host allows it. Stronger than advice — use sparingly. |
 | `ctx.emit(event)` | Stream a structured activity line to the run log / UI. |
 
-### MCP
+### Calling tools (MCP and built-in)
 
 ```js
-ctx.mcp.available            // boolean — is an MCP runtime attached to this agent?
-await ctx.mcp.callTool(name, args)   // call an attached MCP tool by name → text result
+ctx.mcp.available            // boolean — is a tool runtime attached to this agent?
+await ctx.mcp.callTool(name, args)   // call a tool by name → text result
 ```
 
 `args` may be an object (JSON-encoded for you) or a raw JSON string. `callTool` rejects
-when no MCP runtime is attached, so guard on `ctx.mcp.available`. Scope which servers you
-intend to reach by listing their ids in the manifest's `mcpServerIds`. This is how a
+when no tool runtime is attached, so guard on `ctx.mcp.available`. This is how a
 sub-agent reaches an external service — e.g. a step assertion that queries a golden-data
 API for the value a step should have produced.
+
+**`mcpServerIds` in the manifest declares intent, it does not sandbox you.** It documents
+which servers your plugin means to reach, and it is what an operator reads when deciding
+whether to trust the plugin — but it is not enforced at the call. Treat it as a promise
+you are making, and keep to it.
+
+**This is not limited to MCP tools.** `callTool` reaches the agent's whole tool runtime,
+so from 0.4.2 it can also call `rest_request` when that agent has
+[API access](user-guide.md#calling-an-api-instead-of-a-ui) enabled — even though it is a
+built-in capability rather than a server, and so appears in no `mcpServerIds`. That
+agent's own allowlist, credentials and read-only setting still apply; a plugin cannot
+widen them.
 
 ### An activity event
 
