@@ -37,7 +37,13 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.3 — it can also work off-screen.** Point an agent at a website and it runs
+**New in 0.4 — other agents can use it.** A local **Agent API** lets another AI agent hand
+work to SimpleClaw: it decomposes your process, SimpleClaw carries out one operation at a
+time on the real systems, streams each step back as it happens, and reports the answer.
+That's the missing half for systems with no usable API — the agent plans, SimpleClaw
+operates. See [Agent API](docs/agent-api.md).
+
+**From 0.3 — it can also work off-screen.** Point an agent at a website and it runs
 in its own **headless browser**, sealed to that site: nothing touches your screen or
 mouse, so you keep working while the task runs. Sign in to it **once by hand** and
 later runs start already signed in — and you can **take the controls** yourself
@@ -114,6 +120,7 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 | [🌐 Website](https://simpletruss.github.io/simpleclaw-desktop/) | The polished overview and hub. |
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
 | [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, and tips. |
+| [🔌 Agent API](docs/agent-api.md) | Let another AI agent hand work to SimpleClaw (0.4 and later). |
 | [🧩 Plugin developer guide](docs/plugins.md) | Extend SimpleClaw with plugins, no rebuild (0.2 and later). |
 | [🔒 Safety & privacy](docs/safety-and-privacy.md) | Guardrails, safe use, data handling. |
 | [🛠 Troubleshooting](docs/troubleshooting.md) | Fixes for common issues. |
@@ -135,6 +142,9 @@ Also needed:
 - **Google Chrome or Microsoft Edge** — only for the
   [headless-browser scope](docs/user-guide.md#where-the-agent-works-scope). The
   desktop and window scopes don't need it.
+
+Nothing extra is needed for the [Agent API](docs/agent-api.md) — it's built into the app and
+speaks plain HTTP, so a caller can be written in any language.
 
 ## License
 

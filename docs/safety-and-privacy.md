@@ -1,6 +1,6 @@
 # Safety & privacy
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Plugins](plugins.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Plugins](plugins.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/safety-and-privacy.html)
@@ -9,7 +9,11 @@
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
 
-> **New in 0.3:** an agent can run in a **headless browser** instead of on your real
+> **New in 0.4:** a local **Agent API** lets another program tell SimpleClaw to operate this
+> computer. Read [Letting another program drive it](#letting-another-program-drive-it) before
+> you use it — it hands the keys to software rather than to a person.
+
+> **From 0.3:** an agent can run in a **headless browser** instead of on your real
 > screen, and it can **stay signed in** to that site between runs. That removes some
 > risks and adds a different one — see
 > [Headless-browser agents](#headless-browser-agents).
@@ -86,6 +90,49 @@ as long as you hold control, but it only yields **after the step it was already
 performing**, so one last action may land as you take over. Control returns to the
 agent only when you explicitly hand it back (**Hand back** or `Esc`), never because
 your mouse left the panel.
+
+## Letting another program drive it
+
+*New in 0.4.* SimpleClaw exposes a local [Agent API](agent-api.md), letting another program —
+typically another AI agent — hand it work. Nothing uses it until you point something at it,
+but be clear about what is reachable once you do.
+
+**What protects it**
+
+- **Local only.** The interface listens on `127.0.0.1`. It is not reachable from your
+  network, and there is no remote mode to misconfigure.
+- **A fresh token each launch**, written to a file inside SimpleClaw's own user-data folder.
+  Software that cannot read your files cannot drive it.
+- **A caller cannot widen an agent's reach.** It may only use agents that already exist, and
+  it cannot set a start URL, a scope, or a sign-in. Those stay yours to decide.
+- **All the usual brakes still work.** `F9` stops a run whoever started it, and Dry run,
+  step delay, and max steps remain the agent's own settings.
+
+**What it costs you**
+
+- **Any program running as you can use it.** File permissions and a loopback socket are the
+  whole boundary; there is no per-caller approval prompt. Any program on your account that
+  can read your files can do anything one of your agents can do.
+- **A signed-in browser agent is the sharp edge.** A caller can drive it with your account's
+  full authority on that site — the same risk as
+  [staying signed in](#headless-browser-agents), now reachable by software.
+- **The caller's model sees the outcome.** SimpleClaw reports the agent's closing answer
+  back, so whatever the agent read on screen to answer with can end up at the caller's
+  model provider, not only yours.
+- **Runs are unattended by nature.** Nobody is watching each step, so prefer agents scoped
+  to a **single site or window** for this, keep those accounts to the least access that
+  does the job, and check the run history afterwards — every run submitted this way is
+  recorded and replayable like any other.
+
+**Habits worth keeping**
+
+- Point callers at agents whose worst possible action you can live with.
+- Quit SimpleClaw when you're not using it: no app, no interface — the published port and
+  token file go away with it.
+- Never put a password into a task you send in — goal text is stored in run history. Let the
+  agent use the sign-in [a human gave it once](user-guide.md#staying-signed-in) instead.
+- **Don't have a caller retry a failed run to "try again".** SimpleClaw won't retry on its
+  own for the same reason: a resubmitted form is a real duplicate on the far end.
 
 ## Privacy and data handling
 

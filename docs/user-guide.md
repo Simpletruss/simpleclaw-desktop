@@ -1,14 +1,18 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
 > labels each page with its release and can switch between versions.
 
-The complete manual for SimpleClaw 0.3 (Windows, macOS, and Linux).
+The complete manual for SimpleClaw 0.4 (Windows, macOS, and Linux).
 
-> **New in 0.3:** an agent can work inside a **headless browser** instead of your
+> **New in 0.4:** **another program can hand work to SimpleClaw.** A local **Agent API**
+> lets another AI agent submit a task in plain language, watch it happen step by step, and
+> take the answer back. See [Letting another agent drive it](#letting-another-agent-drive-it).
+
+> **From 0.3:** an agent can work inside a **headless browser** instead of your
 > real screen — in the background, sealed to one site, with its own saved sign-in —
 > and you can **take control** of that browser mid-run when something needs a
 > human. See [Where the agent works](#where-the-agent-works-scope).
@@ -22,12 +26,13 @@ The complete manual for SimpleClaw 0.3 (Windows, macOS, and Linux).
 3. [The interface](#the-interface)
 4. [Running a task](#running-a-task)
 5. [Where the agent works (Scope)](#where-the-agent-works-scope)
-6. [Writing good goals](#writing-good-goals)
-7. [Action types](#action-types)
-8. [Settings reference](#settings-reference)
-9. [Extending SimpleClaw (plugins)](#extending-simpleclaw-plugins)
-10. [Current limitations](#current-limitations)
-11. [Glossary](#glossary)
+6. [Letting another agent drive it](#letting-another-agent-drive-it)
+7. [Writing good goals](#writing-good-goals)
+8. [Action types](#action-types)
+9. [Settings reference](#settings-reference)
+10. [Extending SimpleClaw (plugins)](#extending-simpleclaw-plugins)
+11. [Current limitations](#current-limitations)
+12. [Glossary](#glossary)
 
 ---
 
@@ -176,6 +181,38 @@ which is regularly 10–25 seconds on a cold start. The frame area reports what 
 doing (starting the browser → waiting for the debugger → opening the page) with a
 seconds counter, so a slow start is distinguishable from a stuck one.
 
+## Letting another agent drive it
+
+*New in 0.4.*
+
+SimpleClaw has a small **Agent API** on your own machine, which lets another program give
+it work. The other agent understands your business process and breaks it into steps;
+SimpleClaw carries out one step at a time on the actual systems and reports back what
+happened.
+
+This is worth setting up when the systems involved have no usable API — the situation
+SimpleClaw exists for — and you want an agent to run a whole process end to end rather than
+you driving each part by hand.
+
+In short:
+
+- The caller **finds SimpleClaw automatically**: the app publishes its local port and a
+  fresh token to a file in its own data folder at launch.
+- It can **ask what this machine can do** — each agent, the system it is sealed to, and the
+  operations it has been shown — and route each step to the right agent.
+- It submits **one operation at a time** and gets the agent's closing answer back. If the
+  agent stops to ask a question, the question goes to the caller.
+- It can **watch the run live**: a step-by-step event stream carries the same progress
+  SimpleClaw's own window shows, so a caller's UI can display real work rather than a
+  spinner.
+- Runs are **queued**: SimpleClaw still does one thing at a time, and every run lands in
+  the normal history where you can replay it.
+- The interface is **local-only and token-protected** — but any program running as you can
+  reach it, which is the trade-off to understand before enabling it.
+
+The endpoints, the event stream, and the rules a calling agent must follow →
+**[Agent API](agent-api.md)**.
+
 ## Writing good goals
 
 - **Be specific about the outcome.** "Open Notepad, type 'hello world', and save
@@ -219,7 +256,7 @@ sequence of small, visible steps.
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
 
 > Exact labels and defaults may vary slightly by version; values reflect
-> SimpleClaw 0.3.x.
+> SimpleClaw 0.4.x.
 
 ## Extending SimpleClaw (plugins)
 
@@ -246,10 +283,12 @@ working tool-calling example into a folder you can read and adapt; the mechanics
 
 ## Current limitations
 
-SimpleClaw 0.3.x is still an early release:
+SimpleClaw 0.4.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
   browser; it can't span several at once.
+- **One run at a time** — including work sent in over the [Agent API](agent-api.md), which
+  queues rather than running in parallel.
 - **The headless browser is local** — it runs on your own computer, and its saved
   sign-in is tied to this machine and user account. There is no remote or
   cloud-hosted browser, and no remote-machine control.
@@ -282,3 +321,8 @@ SimpleClaw 0.3.x is still an early release:
 - **Origin** — the scheme + host of a URL (`https://app.example.com`). A
   headless-browser agent is sealed to the start URL's origin.
 - **Take control** — pausing the agent to drive its headless browser yourself.
+- **Agent API** — the local interface another program uses to submit tasks to SimpleClaw and
+  follow them, so another agent's abilities include "operate this computer". See
+  [Agent API](agent-api.md).
+- **Operation** — one unit of work a caller hands over: a single business step an agent has
+  been demonstrated doing, like "submit a filing".

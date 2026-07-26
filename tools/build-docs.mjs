@@ -34,6 +34,7 @@ const PAGES = [
   ['index.html', 'Overview'],
   ['getting-started.md', 'Getting started'],
   ['user-guide.md', 'User guide'],
+  ['agent-api.md', 'Agent API'],
   ['plugins.md', 'Plugins'],
   ['safety-and-privacy.md', 'Safety & privacy'],
   ['troubleshooting.md', 'Troubleshooting'],

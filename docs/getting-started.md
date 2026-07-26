@@ -1,6 +1,6 @@
 # Getting started
 
-[← Docs home](index.html) · [User guide](user-guide.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/getting-started.html)
@@ -86,6 +86,17 @@ rather than on your real desktop — in the background, without touching your mo
    yourself if a step needs a human.
 
 Details and caveats → [Where the agent works](user-guide.md#where-the-agent-works-scope).
+
+## 5. Optional — let another AI agent hand it work
+
+*New in 0.4.* If you're building with an AI agent of your own, it can give SimpleClaw
+operations to carry out and read the answers back — useful when the systems in your process
+have no API to automate.
+
+While SimpleClaw is running it publishes a local address and access token to a file in its
+own data folder; a program that reads those can submit tasks, follow each step live, and
+collect the result. The endpoints, the event stream, and the security trade-off →
+[Agent API](agent-api.md).
 
 ## Next steps
 
