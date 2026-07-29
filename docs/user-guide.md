@@ -522,8 +522,8 @@ only then decide — so it can check a claim against golden data, or read a reco
 before calling a run late.
 
 You don't configure *when* it gets called; you write that in prose — in the tool's own
-description, the agent's persona, or a skill. Full details, worked examples and the migration
-path from 0.2–0.4 plugins: **[Custom functions](functions.md)**.
+description, the agent's persona, or a skill. Full details and worked examples:
+**[Custom functions](functions.md)**.
 
 > The **Observer** and **Chronos** themselves aren't add-ons — they're built in, each with its
 > own tab on every agent. Custom functions just give them something to call.

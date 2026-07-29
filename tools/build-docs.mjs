@@ -29,7 +29,11 @@ const config = JSON.parse(readFileSync(join(DOCS, 'versions.json'), 'utf8'))
 const template = readFileSync(join(TOOLS, 'doc-page.html'), 'utf8')
 const switcherCss = readFileSync(join(TOOLS, 'switcher.css'), 'utf8')
 
-/** Guide order in the nav. A version that lacks a file simply doesn't list it. */
+/**
+ * Guide order in the nav. A version that lacks a file simply doesn't list it —
+ * which is why `plugins.md` stays listed here even though main no longer ships
+ * it: the 0.2–0.5 tags still do, and this table supplies their page's label.
+ */
 const PAGES = [
   ['index.html', 'Overview'],
   ['getting-started.md', 'Getting started'],

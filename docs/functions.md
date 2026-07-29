@@ -6,10 +6,7 @@
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/functions.html)
 > labels each page with its release and can switch between versions.
 
-**Functions replaced plugins in SimpleClaw 0.5.** If you're on 0.2–0.4, you want the
-[plugin guide](plugins.md) instead — the sub-agent plugin framework described there was
-removed, and nothing on this page works on those versions. Migrating? See
-[Coming from plugins](#coming-from-plugins).
+**Functions arrived in SimpleClaw 0.5.** Nothing on this page works on 0.2–0.4.
 
 An **function** gives an agent one function of your own — a way to *look something up* or
 *do something* directly, instead of clicking through a user interface for it. You write two
@@ -32,7 +29,6 @@ lifecycle to learn.
 10. [Worked examples](#worked-examples)
 11. [Testing and troubleshooting](#testing-and-troubleshooting)
 12. [Safety](#safety)
-13. [Coming from plugins](#coming-from-plugins)
 
 ---
 
@@ -283,8 +279,7 @@ export async function run(ctx, args) {
 ```
 
 **`expected_result` (owner: `observer`)** — the Observer asks what a task is *supposed* to
-produce, so a claimed success can be checked against the spec instead of vibes. This is the
-QA pattern the old finish-gate plugins served, in a fraction of the code:
+produce, so a claimed success can be checked against the spec instead of vibes:
 
 ```js
 export async function run(ctx, args) {
@@ -347,37 +342,3 @@ agent's configuration (including credentials on that config).
   in-flight work.
 
 See also [Safety & privacy](safety-and-privacy.md).
-
-## Coming from plugins
-
-Plugins (0.2–0.4) let you write a **sub-agent** that hooked into the turn lifecycle at a
-`pre-turn` / `finish-gate` / `post-step` / `post-turn` phase, with a `manifest.yml`, an
-optional settings-panel schema, a per-plugin model, and a `ctx` that could veto a finish or
-inject advice. It was powerful and it was a lot to learn for the thing nearly everyone
-actually wanted: *give the model one more function to call.*
-
-0.5 removes that framework and keeps the tool-calling part:
-
-| Plugins (0.2–0.4) | Functions (0.5+) |
-|-------------------|-------------------|
-| `manifest.yml` + `index.mjs` + optional `tools.json` + `instruction.md` | `tool.json` + `index.mjs` |
-| Chose a lifecycle **phase** | Chooses an **owner** (`planner` / `observer` / `chronos`) |
-| Install org-wide, then opt in per agent | Belongs to one agent; enabled where it lives |
-| `<userData>/orgs/<org>/plugins/<id>/` | `<userData>/orgs/<org>/<agentId>/functions/<folder>/` |
-| Settings → Plugins; Agent editor → Sub-Agents | Agent editor → Planner / Observer / Chronos → **Functions** |
-| Built-in **Judge** finish-gate | Removed — express a completion rule as an `observer` tool plus the Observer's rubric |
-| Built-in **Observer** as a plugin | A core part of the agent, on each agent's **Observer** tab |
-
-To migrate a plugin, ask what it actually did:
-
-- **It called an API / looked something up and fed the answer in.** That's a function:
-  move the body into `run(ctx, args)`, give it an `owner`, and let the model call it.
-- **It watched turns and nudged the run.** That's the Observer — enable it on the agent and
-  write the rule into its rubric. Give it an `observer` function for any fact it needs.
-- **It watched the clock.** That's Chronos, on its own tab; give it a `chronos` function for
-  timings it can't know.
-- **It vetoed a finish (a QA completion check).** Combine the two above: the Observer's
-  rubric states the standard, an `observer` function supplies the expected end state. For
-  grading runs after the fact, use the benchmark outcome judge instead.
-- **It was a settings panel for a knob.** Functions have no config UI; read what you need
-  from a file next to the handler, or from the environment.

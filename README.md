@@ -133,7 +133,7 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
 | [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, and tips. |
 | [🔌 Agent API](docs/agent-api.md) | Let another AI agent hand work to SimpleClaw (0.4 and later). |
-| [🧩 Custom functions](docs/functions.md) | Give the agent a function of your own, no rebuild (0.5 and later; 0.2–0.4 used [plugins](docs/plugins.md)). |
+| [🧩 Custom functions](docs/functions.md) | Give the agent a function of your own, no rebuild (0.5 and later). |
 | [🔒 Safety & privacy](docs/safety-and-privacy.md) | Guardrails, safe use, data handling. |
 | [🛠 Troubleshooting](docs/troubleshooting.md) | Fixes for common issues. |
 
