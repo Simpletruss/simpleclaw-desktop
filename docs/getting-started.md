@@ -87,7 +87,22 @@ rather than on your real desktop — in the background, without touching your mo
 
 Details and caveats → [Where the agent works](user-guide.md#where-the-agent-works-scope).
 
-## 5. Optional — let another AI agent hand it work
+## 5. Optional — have it run later, or every day
+
+*New in 0.6.* Once a task works, you don't have to be there to start it. On the New Task
+screen press **Schedule** instead of Launch and pick a time — once, daily, weekly, or every
+N minutes. For work that repeats, put it on the agent itself: **Agent → Chronos →
+Schedule**. You can also just say when in the task ("*every day at 9, check for new work
+orders*") and SimpleClaw schedules it for you.
+
+The sidebar's **Scheduled** page lists every armed schedule and the next runs due, for all
+your agents. Two things to know before relying on it: SimpleClaw must be **running** when a
+schedule fires, and the agent's own **Dry run** setting still applies — so turn dry-run off
+on that agent, or the scheduled run will only plan.
+
+Details → [Running a task later](user-guide.md#running-a-task-later-scheduling).
+
+## 6. Optional — let another AI agent hand it work
 
 *New in 0.4.* If you're building with an AI agent of your own, it can give SimpleClaw
 operations to carry out and read the answers back — useful when the systems in your process

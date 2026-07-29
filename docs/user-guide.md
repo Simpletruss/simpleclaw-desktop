@@ -6,9 +6,17 @@
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
 > labels each page with its release and can switch between versions.
 
-The complete manual for SimpleClaw 0.5 (Windows, macOS, and Linux).
+The complete manual for SimpleClaw 0.6 (Windows, macOS, and Linux).
 
-> **New in 0.5:** you can **give an agent a function of your own** — a tool it (or one of its
+> **New in 0.6:** **tasks can run later** — once, daily, weekly or on an interval — and the
+> **Scheduled** page shows every armed schedule and the next runs due across all your
+> agents. See [Running a task later](#running-a-task-later-scheduling).
+>
+> Also new in 0.6, for people running SimpleClaw from source: a **batch command** that runs
+> a list of tasks from one command line, several at a time. See
+> [Running many tasks at once](#running-many-tasks-at-once-advanced).
+
+> **From 0.5:** you can **give an agent a function of your own** — a tool it (or one of its
 > supervisors) can call instead of clicking through an interface. Two small files in a folder,
 > live on the next run. See [Extending SimpleClaw](#extending-simpleclaw-custom-functions).
 
@@ -29,15 +37,17 @@ The complete manual for SimpleClaw 0.5 (Windows, macOS, and Linux).
 2. [How it works](#how-it-works)
 3. [The interface](#the-interface)
 4. [Running a task](#running-a-task)
-5. [Where the agent works (Scope)](#where-the-agent-works-scope)
-6. [Letting another agent drive it](#letting-another-agent-drive-it)
-7. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
-8. [Writing good goals](#writing-good-goals)
-9. [Action types](#action-types)
-10. [Settings reference](#settings-reference)
-11. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
-12. [Current limitations](#current-limitations)
-13. [Glossary](#glossary)
+5. [Running a task later (scheduling)](#running-a-task-later-scheduling)
+6. [Running many tasks at once (advanced)](#running-many-tasks-at-once-advanced)
+7. [Where the agent works (Scope)](#where-the-agent-works-scope)
+8. [Letting another agent drive it](#letting-another-agent-drive-it)
+9. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
+10. [Writing good goals](#writing-good-goals)
+11. [Action types](#action-types)
+12. [Settings reference](#settings-reference)
+13. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
+14. [Current limitations](#current-limitations)
+15. [Glossary](#glossary)
 
 ---
 
@@ -87,6 +97,8 @@ your goal ─► take a screenshot ─► ask the AI model for the next action
 - **Action timeline** — a running list of each step: the model's short reasoning
   and the action it chose.
 - **▶ Play / ↻ Re-run** — replay a finished run's frames, or run the same goal again.
+- **⏱ Scheduled** — everything waiting to start later, across every agent, with the next
+  runs due. See [Running a task later](#running-a-task-later-scheduling).
 - **⚙ Settings** — model connection and behavior options.
 
 ## Running a task
@@ -107,6 +119,165 @@ reaches the **maximum steps** limit.
 at 2 per second, so you can watch what happened without re-running anything.
 **↻ Re-run** starts the same goal again as a fresh run; the finished one stays in
 history either way.
+
+## Running a task later (scheduling)
+
+*New in 0.6.*
+
+A task doesn't have to start when you ask for it. You can hand it to SimpleClaw's
+**scheduler**, which holds it and starts the run itself at the time you set — once, or on
+a repeat. Schedules are saved to disk, so they survive closing and reopening the app.
+
+Times are **local** and go down to the **minute**; there are no seconds anywhere.
+
+### Four ways to schedule something
+
+| Where | What it schedules |
+|-------|-------------------|
+| **New Task → Schedule** | The task you just described, on the agent that was matched to it. The one-off case: "not now, at 3pm." |
+| **Agent → Chronos → Schedule** | A standing wake-up for *that* agent: a task plus a time, kept with the agent. Use it for recurring work ("every day at 09:30, check for new work orders"). |
+| **Scenarios → Schedule** | A whole saved scenario — its steps run in order as one pass, the same as pressing Run. |
+| **Just say when** | Put the timing in the task itself — *"in 10 minutes, …"*, *"every day at 9, …"* — and **Chronos** reads it out of the wording and schedules the run instead of starting it. |
+
+Every one of them offers the same four repeat kinds:
+
+| Repeat | Fires |
+|--------|-------|
+| **Once** | At one date and time you pick. |
+| **Every day** | At an `HH:MM` clock time, daily. |
+| **Every week** | On a weekday at an `HH:MM` clock time. |
+| **Every…** | On an interval — every N minutes or hours, counted from when you created it. |
+
+Before you confirm, the dialog states **when the first pass lands** as an absolute time
+plus a countdown ("First pass 7/29/2026, 8:00 AM (in 30m) · repeats every Wednesday at
+08:00") — a spec like "every Monday at 09:00" is easy to misread as "starting this Monday"
+when it isn't.
+
+### Seeing what's scheduled
+
+The **Scheduled** page in the sidebar is the full picture, across every agent, in two tabs:
+
+- **Schedules** — the definitions, grouped by agent: one row per schedule with its
+  countdown, what it runs, how it repeats, and when it next fires.
+- **Upcoming** — the next **10 actual runs**, soonest first, with repeating schedules
+  **expanded**: an "every 30 min" schedule appears as several rows, marked `×2`, `×3`, …
+  for which firing of it each row is.
+
+Both tabs share a filter bar — **agent**, **tasks vs. scenarios**, and **when** (next
+hour / today / next 7 days). The strip labelled **⏱ Scheduled** beside a run's workspace
+shows the same entries in passing and links here with **See all**.
+
+**Cancelling** asks for confirmation first, and says whether you're stopping one run or
+every future run of a repeating schedule. It can't be undone — the timing has to be
+entered again — which is exactly why it asks.
+
+### What happens when one comes due
+
+- **The app has to be running.** A schedule is a timer inside SimpleClaw, not a Windows
+  Task Scheduler entry or a background service. If the app is closed at that moment,
+  nothing fires.
+- **It wakes the agent it was created for** — not whichever agent you happen to have
+  selected. That agent's own settings apply, including its **Dry run** state.
+- **One run at a time still holds.** If a run or scenario pass is already in flight, the
+  occurrence is **skipped**: a repeating schedule simply tries again next time, but a
+  one-off is dropped rather than queued.
+- **Missed repeats are not made up.** After a restart, a repeating schedule rolls forward
+  to its next future time — a daily 09:00 task doesn't run five times because the app was
+  closed for five days.
+- **A past-due one-off runs shortly after launch.** If you closed the app before a
+  one-time schedule fired, it fires soon after the app is next opened.
+
+### Finding scheduled runs afterwards
+
+Every run the scheduler started is stamped with the built-in **Schedule** label, so
+**Run history** distinguishes work that happened while nobody was watching from work you
+started yourself. Filter the history by that label to see only scheduled runs. (The label
+is applied automatically and can't be renamed or deleted, like **Supervised** for recorded
+demonstrations.)
+
+> **Pacing is a separate job.** Chronos also watches the clock *during* a run and nudges
+> the agent when it's falling behind — that's the **Chronos → Pacing** page, unrelated to
+> when a run starts.
+
+## Running many tasks at once (advanced)
+
+*New in 0.6.*
+
+> **This one needs the source repo.** The batch command is part of the SimpleClaw source
+> tree, not the installer — if you downloaded the `.exe`, `.dmg` or `.AppImage`, you don't
+> have it. Everything else on this page works in the installed app. The **Runs** setting
+> below is visible either way, but it only takes effect for the batch command.
+
+The window runs **one task at a time**, on purpose (see
+[Current limitations](#current-limitations)). When you have a list of tasks and don't want
+to sit through them one by one, the **batch command** takes the whole list at once:
+
+```bash
+npm run batch -- --agent "Northwind Staff" \
+  --task "Open the Clients page and report how many clients are listed" \
+  --task "Open the Filings page and report the newest filing"
+
+npm run batch -- --agent "Northwind Staff" --file tasks.txt --parallel 3
+```
+
+A task list is a plain text file, one goal per line. Lines starting with `#` are ignored,
+and a line can send its task to a different agent with `agent :: `:
+
+```
+# tasks.txt
+Open the Clients page and report how many clients are listed
+Open the Filings page and report the newest filing
+Northwind Portal :: Sign in and report the current filing status
+```
+
+Useful flags: `--parallel N` (how many at once), `--timeout N` (give up on a task after N
+minutes), and `--list` (print what *would* run and stop, so you can check the list before
+committing to it).
+
+### How many run at the same time
+
+**Settings → General → Runs → "Maximum tasks running at the same time"** is the ceiling.
+**It defaults to 1**, which means tasks run one after another — the same behavior as
+before, unless you deliberately raise it. `--parallel N` overrides it for a single command.
+
+Each task runs in **its own process, with its own browser**, which is what makes it safe to
+run several at once — but it also means each one costs a browser's worth of memory. Raise
+the limit as far as your machine comfortably allows, not higher.
+
+Three rules apply no matter what number you set:
+
+- **Tasks that share a signed-in agent run one at a time.** An agent with **Stay signed in**
+  turned on has one saved browser profile, and a profile can only be open in one browser.
+  Those tasks are queued behind each other automatically; unrelated tasks keep going in
+  parallel around them.
+- **Agents that work on your real screen never run in parallel.** They'd fight over one
+  mouse. Those need an explicit `--allow-desktop` flag, and even then the whole batch runs
+  one at a time.
+- **Dry-run agents are refused.** Dry run waits for you to press **Continue** at each step,
+  and nobody is watching a batch. Turn dry run off on the agent first.
+
+### What you get back
+
+Progress streams as it happens, tagged by task number, and the command ends with a summary:
+
+```
+✓ [1] finished   2 steps   6s  Northwind Staff: Open the Clients page…
+✗ [2] timeout  128 steps  300s  Northwind Staff: Open the Filings page…
+✓ [3] finished   7 steps  19s  Northwind Staff: Sign in and report…
+
+2/3 finished, 1 failed
+```
+
+Every task is saved to **Run history** like any other run, so you can open one afterwards
+and step through what it did. The command exits with an error code if any task didn't
+finish, which is what you'd check when running it from a script.
+
+The whole list is **checked before anything starts** — a misspelled agent name in task 9
+stops the batch before task 1 opens a browser.
+
+> **If a task stops to ask a question, it's over.** There's nobody there to answer, so that
+> task is abandoned and its question is reported instead of the answer. Tasks you intend to
+> batch should be ones you've already watched succeed on their own.
 
 ## Where the agent works (Scope)
 
@@ -319,10 +490,11 @@ A few more appear only in the situations that call for them:
 | **Nav settle** | Extra pause after an action that navigates | Default 0.5 s, added on top of Step delay only after a click or an Enter-terminated entry, so the next screenshot isn't of the old page. Raise it for slow-loading sites. |
 | **Max steps** | Cap on actions per run | Default 30. Stops runaway loops; increase for longer tasks. |
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
+| **Runs → Maximum tasks running at the same time** | How many tasks the batch command may run at once | App-wide (**Settings → General → Runs**). Default 1 = one after another. Only affects the source-only batch command, not the window or the Agent API — see [Running many tasks at once](#running-many-tasks-at-once-advanced). |
 | **REST API access** | Whether this agent may call an HTTP API | Set per agent (**Planner → MCP Servers**), not app-wide. Off by default, and needs at least one allowed host — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
 
 > Exact labels and defaults may vary slightly by version; values reflect
-> SimpleClaw 0.5.x.
+> SimpleClaw 0.6.x.
 
 ## Extending SimpleClaw (custom functions)
 
@@ -358,12 +530,17 @@ path from 0.2–0.4 plugins: **[Custom functions](functions.md)**.
 
 ## Current limitations
 
-SimpleClaw 0.5.x is still an early release:
+SimpleClaw 0.6.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
   browser; it can't span several at once.
-- **One run at a time** — including work sent in over the [Agent API](agent-api.md), which
-  queues rather than running in parallel.
+- **One run at a time in the window** — and over the [Agent API](agent-api.md), which
+  queues rather than running in parallel. Running several at once is possible only through
+  the source-only [batch command](#running-many-tasks-at-once-advanced), which starts a
+  separate process per task rather than sharing this one.
+- **Schedules need the app open** — they're timers inside SimpleClaw, not OS-level jobs, and
+  a missed repeat isn't made up afterwards. See
+  [Running a task later](#running-a-task-later-scheduling).
 - **The headless browser is local** — it runs on your own computer, and its saved
   sign-in is tied to this machine and user account. There is no remote or
   cloud-hosted browser, and no remote-machine control.
@@ -401,3 +578,10 @@ SimpleClaw 0.5.x is still an early release:
   [Agent API](agent-api.md).
 - **Operation** — one unit of work a caller hands over: a single business step an agent has
   been demonstrated doing, like "submit a filing".
+- **Schedule** — a saved "run this later": a task (or scenario) plus a time, once or
+  repeating. Held by SimpleClaw itself, so the app must be running when it fires. See
+  [Running a task later](#running-a-task-later-scheduling).
+- **Occurrence** — one firing of a schedule. A repeating schedule has many; the
+  **Upcoming** tab lists the next ones individually.
+- **Chronos** — the agent's timekeeper: it reads timing out of a task's wording when you
+  submit it, and watches pacing while the run is underway.

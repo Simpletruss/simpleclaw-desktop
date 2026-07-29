@@ -8,9 +8,10 @@
   ],
   "siteUrl": "https://simpletruss.github.io/simpleclaw-desktop/",
   "releasesUrl": "https://github.com/Simpletruss/simpleclaw-desktop/releases",
-  "latest": "0.5",
+  "latest": "0.6",
   "versions": [
-    { "series": "0.5", "label": "0.5.x", "ref": ".", "note": "current release" },
+    { "series": "0.6", "label": "0.6.x", "ref": ".", "note": "current release" },
+    { "series": "0.5", "label": "0.5.x", "ref": "v0.5.0" },
     { "series": "0.4", "label": "0.4.x", "ref": "v0.4.1" },
     { "series": "0.3", "label": "0.3.x", "ref": "v0.3.0" },
     { "series": "0.2", "label": "0.2.x", "ref": "v0.2.0" },

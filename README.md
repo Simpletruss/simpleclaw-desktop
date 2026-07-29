@@ -37,6 +37,18 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
+**New in 0.6 — it can run on a schedule.** A task doesn't have to start when you ask for
+it: schedule it for later or on a repeat (once, daily, weekly, or every N minutes), and
+SimpleClaw wakes the right agent itself when the time comes. A **Scheduled** page shows
+every armed schedule and the next runs due across all your agents, and scheduled runs are
+labelled in history so you can tell them from work you started by hand. See
+[Running a task later](docs/user-guide.md#running-a-task-later-scheduling).
+
+If you run SimpleClaw from source, 0.6 also adds a **batch command** that takes a list of
+tasks and runs them from one command line — several at a time if you raise the new
+**Settings → General → Runs** limit. See
+[Running many tasks at once](docs/user-guide.md#running-many-tasks-at-once-advanced).
+
 **New in 0.4 — other agents can use it.** A local **Agent API** lets another AI agent hand
 work to SimpleClaw: it decomposes your process, SimpleClaw carries out one operation at a
 time on the real systems, streams each step back as it happens, and reports the answer.

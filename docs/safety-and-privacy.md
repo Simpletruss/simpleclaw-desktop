@@ -51,6 +51,19 @@ screen to an AI model. Please read this page before using it on real work.
   sites, confidential documents, or anything you can't afford to have altered.
 - Watch the timeline as it goes and stop the moment it heads somewhere wrong.
 - Prefer small, specific goals you can verify over broad, open-ended ones.
+- **Only schedule tasks you've already watched succeed.** A
+  [scheduled run](user-guide.md#running-a-task-later-scheduling) starts with nobody
+  present: it takes your real mouse and keyboard at that moment, whatever else you were
+  doing, and there's no one to press `F9`. Prefer a **headless-browser** agent for
+  scheduled work, keep the goals narrow, and check the run afterwards in **Run history**
+  (scheduled runs carry the **Schedule** label).
+- **The same goes double for a batch.** The
+  [batch command](user-guide.md#running-many-tasks-at-once-advanced) starts a whole list
+  unattended, and with the **Runs** limit above 1, several at the same time — so a bad goal
+  is repeated rather than caught. Use `--list` to check what will run before you commit to
+  it, `--timeout` so nothing can grind on indefinitely, and headless-browser agents rather
+  than ones that take your real screen (batch refuses to run those in parallel at all, but
+  it will still run them one at a time if you pass `--allow-desktop`).
 
 ## Headless-browser agents
 
