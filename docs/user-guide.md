@@ -1,14 +1,18 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Plugins](plugins.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
 > labels each page with its release and can switch between versions.
 
-The complete manual for SimpleClaw 0.4 (Windows, macOS, and Linux).
+The complete manual for SimpleClaw 0.5 (Windows, macOS, and Linux).
 
-> **New in 0.4:** **another program can hand work to SimpleClaw.** A local **Agent API**
+> **New in 0.5:** you can **give an agent a function of your own** — a tool it (or one of its
+> supervisors) can call instead of clicking through an interface. Two small files in a folder,
+> live on the next run. See [Extending SimpleClaw](#extending-simpleclaw-custom-functions).
+
+> **From 0.4:** **another program can hand work to SimpleClaw.** A local **Agent API**
 > lets another AI agent submit a task in plain language, watch it happen step by step, and
 > take the answer back. See [Letting another agent drive it](#letting-another-agent-drive-it).
 
@@ -31,7 +35,7 @@ The complete manual for SimpleClaw 0.4 (Windows, macOS, and Linux).
 8. [Writing good goals](#writing-good-goals)
 9. [Action types](#action-types)
 10. [Settings reference](#settings-reference)
-11. [Extending SimpleClaw (plugins)](#extending-simpleclaw-plugins)
+11. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
 12. [Current limitations](#current-limitations)
 13. [Glossary](#glossary)
 
@@ -223,7 +227,7 @@ opening a page, finding the row, and squinting at a number — slower and easier
 wrong than simply asking for it. So an agent can be given **REST API access**: one tool
 that fetches from an HTTP API and hands the response back as text.
 
-You configure it on the agent's own page, under **Planner → Tools → REST API access**.
+You configure it on the agent's own page, under **Planner → MCP Servers → REST API access**.
 It belongs to the agent rather than to the app, because which system an agent should
 reach depends on its job — and so does whose credentials it should carry.
 
@@ -315,37 +319,46 @@ A few more appear only in the situations that call for them:
 | **Nav settle** | Extra pause after an action that navigates | Default 0.5 s, added on top of Step delay only after a click or an Enter-terminated entry, so the next screenshot isn't of the old page. Raise it for slow-loading sites. |
 | **Max steps** | Cap on actions per run | Default 30. Stops runaway loops; increase for longer tasks. |
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
-| **REST API access** | Whether this agent may call an HTTP API | Set per agent (**Planner → Tools**), not app-wide. Off by default, and needs at least one allowed host — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
+| **REST API access** | Whether this agent may call an HTTP API | Set per agent (**Planner → MCP Servers**), not app-wide. Off by default, and needs at least one allowed host — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
 
 > Exact labels and defaults may vary slightly by version; values reflect
-> SimpleClaw 0.4.x.
+> SimpleClaw 0.5.x.
 
-## Extending SimpleClaw (plugins)
+## Extending SimpleClaw (custom functions)
 
-**Plugins** add behavior to SimpleClaw without reinstalling or rebuilding it — you drop a
-folder in from **⚙ Settings → Plugins** and it takes effect. A plugin contributes a
-**sub-agent** that runs *inside* a task to shape how it goes — for example a **completion
-check** that inspects the finished screen and sends the agent back if the job isn't really
-done, or a per-step check.
+A **custom function** gives the agent one function of your own — a way to *look something up*
+or *do something* directly instead of clicking through an interface for it. Say your
+customers' details live behind an API: a function turns that into a single call the agent
+can make, which is faster than navigating the CRM and can't mis-click.
 
-Installing makes a plugin available to the whole organization; it only affects an agent
-once you **add it** on that agent's **Sub-Agents** tab. To build your own, see the
-**[Plugin developer guide](plugins.md)**.
+You write two small files in a folder — `tool.json` (what the model is shown) and
+`index.mjs` (what runs when it's called) — and it's live on the next run, with no rebuild.
+Functions belong to **one agent**, stored beside its skills and memory, so each agent has
+exactly the functions its job needs.
 
-**Plugins can use tools.** A plugin that runs its own logic can call an AI model and give
-it **tools** to invoke directly — actions like "record a lesson to memory", "nudge the
-run", or "send it back to keep working" — instead of coaxing the model to reply in a fixed
-text format and parsing that. This *native tool-calling* is more reliable and is how the
-built-in **Observer** learns. **Settings → Plugins → Observer → Install** drops a complete,
-working tool-calling example into a folder you can read and adapt; the mechanics are in the
-[developer guide](plugins.md#native-tools-tool-calling).
+One field decides **who** gets the tool — and which tab you manage it on:
 
-> **Pacing / time limits** (e.g. "finish within 10 minutes") aren't a plugin — they're
-> built in as **Chronos**, configured on each agent's **Chronos** tab.
+| `owner` | Who can call it | Manage it in |
+|---------|-----------------|--------------|
+| `planner` | The agent itself, while working | **Planner → Functions** |
+| `observer` | The Observer, while judging whether the run went wrong | **Observer → Functions** |
+| `chronos` | Chronos, while judging whether the run is behind | **Chronos → Functions** |
+
+Each of those tabs has its own **Functions** page, which lists that caller's tools, scaffolds a
+working starter, and opens the folder for editing. A supervisor can call a tool, read the answer, and
+only then decide — so it can check a claim against golden data, or read a recorded timing
+before calling a run late.
+
+You don't configure *when* it gets called; you write that in prose — in the tool's own
+description, the agent's persona, or a skill. Full details, worked examples and the migration
+path from 0.2–0.4 plugins: **[Custom functions](functions.md)**.
+
+> The **Observer** and **Chronos** themselves aren't add-ons — they're built in, each with its
+> own tab on every agent. Custom functions just give them something to call.
 
 ## Current limitations
 
-SimpleClaw 0.4.x is still an early release:
+SimpleClaw 0.5.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
   browser; it can't span several at once.

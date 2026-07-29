@@ -1,6 +1,6 @@
 # Safety & privacy
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Plugins](plugins.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/safety-and-privacy.html)
@@ -103,7 +103,7 @@ your mouse left the panel.
 
 *New in 0.4.2.* An agent can be granted **REST API access**: one tool that fetches from
 an HTTP API directly, instead of opening the site and reading values off the screen. It
-is configured per agent, on that agent's page under **Planner → Tools**.
+is configured per agent, on that agent's page under **Planner → MCP Servers**.
 
 It is per agent on purpose. Which system an agent may reach — and whose credentials it
 carries — belongs to that agent's job. A scheduling agent and a billing agent reach
