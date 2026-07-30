@@ -1,6 +1,6 @@
 # SimpleClaw — Custom functions
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/functions.html)

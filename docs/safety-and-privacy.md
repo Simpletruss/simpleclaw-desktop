@@ -1,6 +1,6 @@
 # Safety & privacy
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/safety-and-privacy.html)

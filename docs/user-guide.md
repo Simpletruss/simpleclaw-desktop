@@ -1,6 +1,6 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
@@ -15,6 +15,11 @@ The complete manual for SimpleClaw 0.6 (Windows, macOS, and Linux).
 > Also new in 0.6, for people running SimpleClaw from source: a **batch command** that runs
 > a list of tasks from one command line, several at a time. See
 > [Running many tasks at once](#running-many-tasks-at-once-advanced).
+>
+> Two smaller 0.6 changes: model settings start with a **provider you pick by name**
+> ([Settings reference](#settings-reference)), and the **run bar** now stands in for the
+> window whenever the window isn't on screen ([The run bar](#the-run-bar)). Everything that
+> changed, release by release → **[Release notes](release-notes.md)**.
 
 > **From 0.5:** you can **give an agent a function of your own** — a tool it (or one of its
 > supervisors) can call instead of clicking through an interface. Two small files in a folder,
@@ -119,6 +124,37 @@ reaches the **maximum steps** limit.
 at 2 per second, so you can watch what happened without re-running anything.
 **↻ Re-run** starts the same goal again as a fresh run; the finished one stays in
 history either way.
+
+### The run bar
+
+When a **real** run (dry run off) is going and the SimpleClaw window isn't on screen, a slim
+always-on-top **run bar** appears near the top of your primary display and stands in for the
+window. It carries what you'd otherwise be missing:
+
+- the run's **status and current step**, with the live action text underneath,
+- the **tokens** the run has used so far,
+- **Stop** — the same emergency stop as `F9`,
+- **⤢ Workspace** — bring the main window back.
+
+It never takes keyboard focus, so it can't steal a keystroke from the app the agent is
+driving. Dry runs don't get a bar; you're watching the window for those.
+
+**Why the window goes away.** An agent working on your real screen has to have the window
+out of the way — otherwise the window sits under the agent's own clicks — so those runs
+minimize it. A **headless-browser** run started from the window *keeps* the window, because
+that's where the live browser view and [taking control](#taking-control-mid-run) live. A run
+that came from somewhere else — the [Agent API](agent-api.md), or a
+[schedule](#running-a-task-later-scheduling) coming due — minimizes it either way: you were
+working in another app and didn't ask to look at this one.
+
+**The two are never on screen together** *(0.6.2)*. Press **⤢ Workspace** and the window
+comes back while the bar steps aside; minimize the window yourself mid-run and the bar takes
+over again, without you having to ask for it twice. If the agent stops to ask you something,
+the bar grows an answer box — unless the window is up, in which case the question is waiting
+in the run view where you're already looking.
+
+When the run ends, the bar closes. A window the **run** minimized is restored; a window
+**you** put away stays put.
 
 ## Running a task later (scheduling)
 
@@ -482,9 +518,10 @@ A few more appear only in the situations that call for them:
 
 | Setting | Controls | Notes |
 |---------|----------|-------|
-| **Base URL** | Your AI model's API endpoint | OpenAI-compatible `/v1/chat/completions`. Required. |
+| **Provider** | Which service an endpoint belongs to | *New in 0.6.* Floxi (the hosted gateway the app ships pointed at), OpenAI, Anthropic, Google, Qwen, or Custom for any other OpenAI-compatible server. Picking one fills in the two fields below — see [Connect your AI model](getting-started.md#2-connect-your-ai-model). |
+| **Base URL** | Your AI model's API endpoint | OpenAI-compatible `/v1/chat/completions`. Pre-filled from the provider, and editable. Required. |
 | **API key** | Authentication for the endpoint | Required. Stored locally on your machine. |
-| **Model name** | Which vision model to use | Must be vision-capable. Required. |
+| **Model name** | Which vision model to use | Must be vision-capable. A provider with a known catalog lists its models; Custom lists whatever the endpoint reports and accepts free text. Required. |
 | **Dry run** | Plan-only vs. act-for-real | **On by default.** On = show without executing; Off = actually control input. |
 | **Step delay** | Pause after every action | Default 0.5 s. Longer = easier to watch and interrupt. |
 | **Nav settle** | Extra pause after an action that navigates | Default 0.5 s, added on top of Step delay only after a click or an Enter-terminated entry, so the next screenshot isn't of the old page. Raise it for slow-loading sites. |

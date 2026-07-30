@@ -43,6 +43,7 @@ const PAGES = [
   ['plugins.md', 'Plugins'],
   ['safety-and-privacy.md', 'Safety & privacy'],
   ['troubleshooting.md', 'Troubleshooting'],
+  ['release-notes.md', 'Release notes'],
 ]
 
 /* Optional slots the hand-written landing page can provide. When they're absent
