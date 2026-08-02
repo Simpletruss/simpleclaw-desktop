@@ -1,10 +1,6 @@
 # Getting started
 
-<<<<<<< HEAD
-[← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
-=======
-[← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
->>>>>>> 2b30362c23a1e280038ee445c370aca86e5f4ebd
+[← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/getting-started.html)

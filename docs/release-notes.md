@@ -1,6 +1,6 @@
 # SimpleClaw — Release notes
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/release-notes.html)
@@ -10,14 +10,51 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.6.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.7.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.6 — Runs on a schedule
+## 0.7 — Runs as a server
 
 *Current release.*
+
+**SimpleClaw doesn't have to be an app on somebody's desktop.** It can run **headless** — no
+window, no `F9`, nobody watching — exposing only its control API, so another system can hand
+it work over the network and read the answers back. It's distributed as a **deployment
+bundle** on the Releases page (`simpleclaw-server-<version>-docker.tar.gz`): extract it, run
+`docker compose up -d`, and Docker is the only prerequisite. Agents come from a folder you
+mount rather than from the image, and the model key and any sign-in credentials come from
+the environment, so nothing sensitive sits at rest in the deployment.
+→ [Server mode](server-mode.md)
+
+**Only headless-browser agents run there**, because a container has no desktop — a
+desktop- or window-scope agent is refused rather than allowed to click into a blank virtual
+screen. And with no saved Chrome profile to sign in once, a deployed agent signs in on every
+run from credentials the platform injects; the model only ever sees the *name* of a secret,
+never its value.
+
+**One link for a run's whole life.** The URL a run hands out shows live frames and a takeover
+button while it's running, and the conversation, every screenshot and the step trace once
+it's finished. A link that used to go blank the moment the run ended now shows what happened
+— which is what makes it safe to put in a notification nobody reads for an hour. It's also
+how a person gets an unattended run past an MFA prompt.
+→ [A link a person can open](agent-api.md#a-link-a-person-can-open)
+
+**API changes worth knowing.** `GET /v1/health` is now a content-free liveness probe and
+`GET /v1/ready` a readiness one — both unauthenticated, so a container platform can probe
+them; the operational view it used to return moved to `GET /v1/status`. `POST /v1/window/show`
+answers `501` on a server, which has no window to show.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.7.0** | Server mode, the deployment bundle, and the run link that outlives the run. |
+
+---
+
+## 0.6 — Runs on a schedule
 
 **A task doesn't have to start when you ask for it.** Hand it to the **scheduler** and it
 starts the run itself — once at a set time, every day, every week, or on an interval. You

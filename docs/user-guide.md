@@ -1,10 +1,6 @@
 # SimpleClaw — User guide
 
-<<<<<<< HEAD
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
-=======
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
->>>>>>> 2b30362c23a1e280038ee445c370aca86e5f4ebd
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
@@ -13,8 +9,8 @@
 The complete manual for SimpleClaw 0.7 (Windows, macOS, and Linux).
 
 > **New in 0.7:** SimpleClaw can run **without a window at all** — as a headless service that
-> only exposes its API, shipped as a container image, for when the work should happen on a
-> server rather than on somebody's desktop. See
+> only exposes its API, deployed with Docker, for when the work should happen on a server
+> rather than on somebody's desktop. See
 > [Running it as a server](#running-it-as-a-server).
 
 > **From 0.6:** **tasks can run later** — once, daily, weekly or on an interval — and the
