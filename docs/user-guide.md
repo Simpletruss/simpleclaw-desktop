@@ -1,18 +1,23 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
 > labels each page with its release and can switch between versions.
 
-The complete manual for SimpleClaw 0.6 (Windows, macOS, and Linux).
+The complete manual for SimpleClaw 0.7 (Windows, macOS, and Linux).
 
-> **New in 0.6:** **tasks can run later** — once, daily, weekly or on an interval — and the
+> **New in 0.7:** SimpleClaw can run **without a window at all** — as a headless service that
+> only exposes its API, shipped as a container image, for when the work should happen on a
+> server rather than on somebody's desktop. See
+> [Running it as a server](#running-it-as-a-server).
+
+> **From 0.6:** **tasks can run later** — once, daily, weekly or on an interval — and the
 > **Scheduled** page shows every armed schedule and the next runs due across all your
 > agents. See [Running a task later](#running-a-task-later-scheduling).
 >
-> Also new in 0.6, for people running SimpleClaw from source: a **batch command** that runs
+> Also in 0.6, for people running SimpleClaw from source: a **batch command** that runs
 > a list of tasks from one command line, several at a time. See
 > [Running many tasks at once](#running-many-tasks-at-once-advanced).
 
@@ -41,13 +46,14 @@ The complete manual for SimpleClaw 0.6 (Windows, macOS, and Linux).
 6. [Running many tasks at once (advanced)](#running-many-tasks-at-once-advanced)
 7. [Where the agent works (Scope)](#where-the-agent-works-scope)
 8. [Letting another agent drive it](#letting-another-agent-drive-it)
-9. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
-10. [Writing good goals](#writing-good-goals)
-11. [Action types](#action-types)
-12. [Settings reference](#settings-reference)
-13. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
-14. [Current limitations](#current-limitations)
-15. [Glossary](#glossary)
+9. [Running it as a server](#running-it-as-a-server)
+10. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
+11. [Writing good goals](#writing-good-goals)
+12. [Action types](#action-types)
+13. [Settings reference](#settings-reference)
+14. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
+15. [Current limitations](#current-limitations)
+16. [Glossary](#glossary)
 
 ---
 
@@ -383,11 +389,48 @@ In short:
   spinner.
 - Runs are **queued**: SimpleClaw still does one thing at a time, and every run lands in
   the normal history where you can replay it.
-- The interface is **local-only and token-protected** — but any program running as you can
-  reach it, which is the trade-off to understand before enabling it.
+- In the desktop app the interface is **local-only and token-protected** — but any program
+  running as you can reach it, which is the trade-off to understand before enabling it. To
+  let a caller reach it from another machine, see [Running it as a server](#running-it-as-a-server).
 
 The endpoints, the event stream, and the rules a calling agent must follow →
 **[Agent API](agent-api.md)**.
+
+## Running it as a server
+
+*New in 0.7.*
+
+Everything above assumes SimpleClaw is an app on your desktop, with you nearby. It doesn't
+have to be. SimpleClaw can also run **headless** — no window, no `F9`, nobody watching — as a
+long-lived service that only exposes its API. It's distributed as a **deployment bundle** on
+the Releases page — extract it, run `docker compose up -d` — so it can live alongside your
+other services instead of on one person's machine.
+
+Reach for it when:
+
+- another system should be able to hand SimpleClaw work **without a person or a laptop being
+  involved** — your backend, a workflow engine, or an AI agent of your own;
+- the work should keep happening **when nobody is logged in**;
+- you want the **same thing in staging and production**, configured by environment and
+  secrets rather than by a settings screen.
+
+Three things to know before planning around it:
+
+- **Only headless-browser agents run there.** A container has no desktop, so a desktop- or
+  window-scope agent is refused rather than allowed to click into a blank screen. Set an
+  agent's [scope](#where-the-agent-works-scope) to a headless browser before deploying it.
+- **Signing in works differently.** There's no persistent Chrome profile to "log in once"
+  into, so an agent signs in on every run from credentials the platform supplies — and a site
+  demanding MFA or a CAPTCHA still needs a person, who joins through the run's live link and
+  [takes the controls](#taking-control-mid-run).
+- **One run at a time, per instance,** exactly as in the app. More throughput means more
+  instances, not more parallelism inside one.
+
+Deployment, configuration, secrets, and health checks →
+**[Server mode](server-mode.md)**. Read
+[Running it as a server](safety-and-privacy.md#running-it-as-a-server) in Safety & privacy
+first: an unattended agent reachable over a network is a different risk from the same agent
+on your desk.
 
 ## Calling an API instead of a UI
 
@@ -530,20 +573,23 @@ path from 0.2–0.4 plugins: **[Custom functions](functions.md)**.
 
 ## Current limitations
 
-SimpleClaw 0.6.x is still an early release:
+SimpleClaw 0.7.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
   browser; it can't span several at once.
 - **One run at a time in the window** — and over the [Agent API](agent-api.md), which
-  queues rather than running in parallel. Running several at once is possible only through
-  the source-only [batch command](#running-many-tasks-at-once-advanced), which starts a
-  separate process per task rather than sharing this one.
-- **Schedules need the app open** — they're timers inside SimpleClaw, not OS-level jobs, and
-  a missed repeat isn't made up afterwards. See
+  queues rather than running in parallel. Running several at once means either the
+  source-only [batch command](#running-many-tasks-at-once-advanced), which starts a
+  separate process per task, or several [server](#running-it-as-a-server) instances.
+- **Schedules need a process running** — they're timers inside SimpleClaw, not OS-level
+  jobs, and a missed repeat isn't made up afterwards. In server mode they're off by default,
+  because several replicas would each fire the same one. See
   [Running a task later](#running-a-task-later-scheduling).
-- **The headless browser is local** — it runs on your own computer, and its saved
-  sign-in is tied to this machine and user account. There is no remote or
-  cloud-hosted browser, and no remote-machine control.
+- **A server runs browser agents only** — there is no desktop in a container, so the monitor
+  and window scopes are refused there. See [Server mode](server-mode.md).
+- **A saved sign-in is tied to one machine** — the headless browser's "stay signed in"
+  profile belongs to the computer and user account that created it, so it doesn't travel to a
+  server; a deployed agent signs in each run from injected credentials instead.
 - **Site sealing is a backstop, not a sandbox** — navigation away from the allowed
   origins is reversed after the fact, so treat it as a guard rail rather than
   enforced isolation.

@@ -1,6 +1,6 @@
 # Safety & privacy
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/safety-and-privacy.html)
@@ -8,6 +8,11 @@
 
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
+
+> **New in 0.7:** SimpleClaw can run as a **headless server**, usually in a container, with
+> its API reachable over the network rather than only from this machine. That is a different
+> threat model from everything else on this page — see
+> [Running it as a server](#running-it-as-a-server).
 
 > **New in 0.4:** a local **Agent API** lets another program tell SimpleClaw to operate this
 > computer. Read [Letting another program drive it](#letting-another-program-drive-it) before
@@ -157,8 +162,10 @@ but be clear about what is reachable once you do.
 
 **What protects it**
 
-- **Local only.** The interface listens on `127.0.0.1`. It is not reachable from your
-  network, and there is no remote mode to misconfigure.
+- **Local only.** In the desktop app the interface listens on `127.0.0.1`. It is not
+  reachable from your network, and there is no remote mode to misconfigure. (Running it
+  deliberately as a [server](#running-it-as-a-server) is the exception, and a separate
+  decision.)
 - **A fresh token each launch**, written to a file inside SimpleClaw's own user-data folder.
   Software that cannot read your files cannot drive it.
 - **A caller cannot widen an agent's reach.** It may only use agents that already exist, and
@@ -191,6 +198,48 @@ but be clear about what is reachable once you do.
   agent use the sign-in [a human gave it once](user-guide.md#staying-signed-in) instead.
 - **Don't have a caller retry a failed run to "try again".** SimpleClaw won't retry on its
   own for the same reason: a resubmitted form is a real duplicate on the far end.
+
+## Running it as a server
+
+*New in 0.7.* SimpleClaw can run [headless](server-mode.md) — no window, nobody at the
+keyboard — with its API reachable over the network. Most of this page assumes a person is
+present and can hit `F9`. Here nobody is, so read this before deploying one.
+
+**What's different, in your favour**
+
+- **It can't touch a real desktop.** Only headless-browser agents run in server mode, and a
+  desktop- or window-scope agent is refused rather than allowed to click into a blank virtual
+  screen. The blast radius is the sites the agents are sealed to.
+- **No secret at rest.** Model keys and sign-in credentials come from the environment or a
+  mounted secret file, and agent files are held read-only so an injected key can't be written
+  back into one.
+- **The model still never sees a credential.** Sign-in works through a tool whose only
+  parameter is the *name* of a secret; the value is absent from the prompt, the model's
+  arguments, the recorded step, and the event stream.
+- **Every run is still recorded** and replayable, exactly like one started by hand.
+
+**What's different, against you**
+
+- **The boundary is now a credential, not your login.** In the desktop app the protection is
+  that a caller must already be running as you on your machine. On a server it's whatever
+  token or JWT you configured, and anything that can reach the port. Configure it properly:
+  [Authentication](server-mode.md#authentication).
+- **Don't put it on the public internet bare.** It authenticates callers; it does not rate
+  limit, filter, or absorb abuse. Put it behind whatever fronts your other services.
+- **A signed-in agent acts with a real account's authority**, unattended, whenever a caller
+  asks. Give those accounts the least access that does the job — this is the same sharp edge
+  as [staying signed in](#headless-browser-agents), now available to software around the
+  clock.
+- **Nobody sees a run go wrong.** There is no `F9` and no one watching the frames. Prefer
+  agents whose worst possible action you can live with, and read the history.
+- **Live links are shareable by design.** A run's link lets whoever holds it watch that run,
+  drive its browser during takeover, and end it — without your API credential. That is the
+  point (it's how a person gets past an MFA prompt), but treat the link as sensitive while
+  the run is alive, and don't set a public URL for an executor that shouldn't be reachable.
+- **Chrome runs without its sandbox** in the container, because container kernels generally
+  forbid the privileges it needs. The compensating controls are a non-root user, the origin
+  seal on the agent's browser, and a scrubbed environment at browser launch — real, but not
+  the same as the sandbox.
 
 ## Privacy and data handling
 

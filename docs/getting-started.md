@@ -1,6 +1,6 @@
 # Getting started
 
-[← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/getting-started.html)
@@ -112,6 +112,22 @@ While SimpleClaw is running it publishes a local address and access token to a f
 own data folder; a program that reads those can submit tasks, follow each step live, and
 collect the result. The endpoints, the event stream, and the security trade-off →
 [Agent API](agent-api.md).
+
+## 7. Optional — run it on a server instead of a desktop
+
+*New in 0.7.* Once an agent works reliably against a website, it doesn't have to live on your
+machine. SimpleClaw can run **headless** — no window, nobody watching — as a service that
+only exposes its API. Download `simpleclaw-server-<version>-docker.tar.gz` from the same
+Releases page as the installers, extract it, and `docker compose up -d`. Docker is the only
+prerequisite.
+
+This is for the case where another system should be able to hand it work with no person and
+no laptop involved. Two constraints shape it: only **headless-browser** agents run there (a
+container has no desktop), and the agent signs in on every run from credentials you supply
+rather than from a saved profile.
+
+Everything it needs — deployment, configuration, secrets, health checks →
+[Server mode](server-mode.md).
 
 ## Next steps
 

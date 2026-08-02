@@ -37,14 +37,24 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.6 — it can run on a schedule.** A task doesn't have to start when you ask for
+**New in 0.7 — it can run as a server.** SimpleClaw doesn't have to be an app on somebody's
+desktop. It can run **headless** — no window, nobody watching — exposing only its API, and it
+ships as a **deployment bundle** on the [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases/latest)
+(`simpleclaw-server-<version>-docker.tar.gz`): extract it, `docker compose up -d`, and Docker
+is the only prerequisite. Another system
+hands it work over the network, follows each step live, and reads the answer back. Only
+[headless-browser](docs/user-guide.md#where-the-agent-works-scope) agents run there (a
+container has no desktop), and they sign in each run from credentials the platform injects
+rather than from a saved profile. See [Server mode](docs/server-mode.md).
+
+**From 0.6 — it can run on a schedule.** A task doesn't have to start when you ask for
 it: schedule it for later or on a repeat (once, daily, weekly, or every N minutes), and
 SimpleClaw wakes the right agent itself when the time comes. A **Scheduled** page shows
 every armed schedule and the next runs due across all your agents, and scheduled runs are
 labelled in history so you can tell them from work you started by hand. See
 [Running a task later](docs/user-guide.md#running-a-task-later-scheduling).
 
-If you run SimpleClaw from source, 0.6 also adds a **batch command** that takes a list of
+If you run SimpleClaw from source, 0.6 added a **batch command** that takes a list of
 tasks and runs them from one command line — several at a time if you raise the new
 **Settings → General → Runs** limit. See
 [Running many tasks at once](docs/user-guide.md#running-many-tasks-at-once-advanced).
@@ -133,13 +143,15 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
 | [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, and tips. |
 | [🔌 Agent API](docs/agent-api.md) | Let another AI agent hand work to SimpleClaw (0.4 and later). |
+| [🐳 Server mode](docs/server-mode.md) | Run it headless in a container — deployment, configuration, secrets (0.7 and later). |
 | [🧩 Custom functions](docs/functions.md) | Give the agent a function of your own, no rebuild (0.5 and later; 0.2–0.4 used [plugins](docs/plugins.md)). |
 | [🔒 Safety & privacy](docs/safety-and-privacy.md) | Guardrails, safe use, data handling. |
 | [🛠 Troubleshooting](docs/troubleshooting.md) | Fixes for common issues. |
 
 ## Requirements
 
-**A desktop OS** — Windows, macOS, or Linux:
+**A desktop OS** — Windows, macOS, or Linux (or, from 0.7, a container host: see
+[Server mode](docs/server-mode.md)):
 
 | Platform | Download | Notes |
 |----------|----------|-------|
@@ -156,7 +168,9 @@ Also needed:
   desktop and window scopes don't need it.
 
 Nothing extra is needed for the [Agent API](docs/agent-api.md) — it's built into the app and
-speaks plain HTTP, so a caller can be written in any language.
+speaks plain HTTP, so a caller can be written in any language. To reach that API from another
+machine, run SimpleClaw in [server mode](docs/server-mode.md); the desktop app's own API is
+loopback-only by design.
 
 ## License
 

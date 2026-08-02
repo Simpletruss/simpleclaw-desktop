@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/troubleshooting.html)
@@ -79,6 +79,33 @@ For the batch command
 | One task timed out at the same number of minutes every time | That's `--timeout` doing its job. Either the goal is too big for the limit or the agent is stuck in a loop — open the run in **Run history** and read the steps before raising it. |
 | It got slower, or the machine ran out of memory | Every parallel task starts its own browser. Lower **Runs** (or `--parallel`) until it fits; this is bounded by memory, not by processor cores. |
 | I can't find the runs afterwards | They're in **Run history** like any other run, under the agent that carried each one out. The summary line prints each task's session id. |
+
+## Server mode and containers
+
+For a headless deployment ([Server mode](server-mode.md)). Almost everything here is a
+**startup** failure on purpose — a misconfigured executor is meant to die with a readable
+message rather than pass its probes and fail on the first real request.
+
+| Symptom | Likely cause / fix |
+|---------|--------------------|
+| `no display available — start Xvfb before Electron` | Electron needs an X server on Linux even with no windows. The image's entrypoint starts one; you'll only see this running the entry point yourself, or with a broken entrypoint. |
+| `no browser-scope agent` at startup | The active organization has no agent that could run here — desktop and window scopes are refused in server mode. Either point `AUTOPLAY_ACTIVE_ORG` at the org that has your browser agents, or change the agent's [scope](user-guide.md#where-the-agent-works-scope). |
+| `no model API key for: <agent>` at startup | A browser-scope agent in the active org has no key, in its own file or from the environment. Set `AUTOPLAY_MODEL_API_KEY` (or `_FILE`) — it applies to every agent. |
+| It starts, then every run `401`s on the first model call | An `AUTOPLAY_MODEL_*` variable is overriding the key in `agent.json`, and it's the wrong one. The overlay always wins; the startup log names which variables are overriding what. |
+| `422` from `POST /v1/runs` | That agent's scope isn't a headless browser. `GET /v1/capabilities` greys out the ones that can't run here. |
+| `501` from `POST /v1/window/show` | Expected — a headless executor has no window. Use the run's live link instead. |
+| Refuses to start, complaining about the bind and the token | It won't publish a non-loopback port protected only by a token it generated itself, because nothing outside the process could know it. Set `AUTOPLAY_AUTH_MODE` with a real credential. |
+| Startup names a half-configured setting | `jwt` mode needs public key, issuer *and* audience; `AUTOPLAY_STORE=mongo` needs both URI and database. Half of either is a hard stop rather than a silent fallback. |
+| The container is killed before runs finish | The platform's termination grace period is shorter than the drain. It stops accepting work and gives the active run up to 15 s to write itself to history; allow more than that. |
+| Readiness never passes on a cold start | A first start pays for the X server, Electron and the first Chrome launch. Allow ~90 s before `/v1/ready` has to answer. |
+| An env var seems to be ignored | An empty value counts as **unset** by design, so a platform rendering `-e FOO=` can't blank out a working setting. Check the variable actually has a value. |
+| Agents look wrong, or the roster is empty | The mount isn't where the executor is reading from. Agents come from `{AUTOPLAY_DATA_DIR}/orgs` unless `ORGANIZATIONS_DIR` says otherwise — and in Git Bash on Windows, `MSYS_NO_PATHCONV=1` before `docker run`, or container paths get rewritten to Windows ones. |
+| Edits to `agent.json` don't take effect | Live reload is off unless `AUTOPLAY_AGENTS_WATCH_MS` is set; without it, restart. A reload also only affects the **next** run, not one already going. |
+| Agent files got rewritten or deleted | `AUTOPLAY_AGENTS_READONLY` was turned off against a real mount. Don't — migration state lives in the container, so each start looks like a first start and a writable roster pass rewrites the set. Restore from a copy. |
+| My desktop run history disappeared | Retention swept the mount. The defaults (7-day screenshots, 30-day sessions, 2 GB) apply to whatever is behind it — set all three to `0` for a folder you also use from the app. |
+| Scheduled tasks never fire | Schedules are off in server mode; several replicas would each fire the same one. `AUTOPLAY_SCHEDULER=on` if you run exactly one instance. |
+| A run stalls on a login page | Unattended sign-in can't pass MFA or a CAPTCHA. Open the run's live link and [take the controls](user-guide.md#taking-control-mid-run) — and set `AUTOPLAY_PUBLIC_URL`, or no link is handed out. |
+| A browser request is refused cross-origin | `AUTOPLAY_CORS_ORIGINS` takes exact origins, comma-separated. There is no wildcard. |
 
 ## Still stuck?
 
