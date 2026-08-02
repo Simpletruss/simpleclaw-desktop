@@ -59,6 +59,12 @@ tasks and runs them from one command line — several at a time if you raise the
 **Settings → General → Runs** limit. See
 [Running many tasks at once](docs/user-guide.md#running-many-tasks-at-once-advanced).
 
+Also in 0.6: model settings start with a **provider you pick by name** — Floxi, OpenAI,
+Anthropic, Google, Qwen, or any OpenAI-compatible server of your own — which fills in that
+provider's address and models for you ([Connect your AI model](docs/getting-started.md#2-connect-your-ai-model)),
+and the always-on-top **run bar** stands in for the window whenever the window isn't on
+screen ([The run bar](docs/user-guide.md#the-run-bar)).
+
 **New in 0.4 — other agents can use it.** A local **Agent API** lets another AI agent hand
 work to SimpleClaw: it decomposes your process, SimpleClaw carries out one operation at a
 time on the real systems, streams each step back as it happens, and reports the answer.
@@ -143,10 +149,15 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
 | [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, and tips. |
 | [🔌 Agent API](docs/agent-api.md) | Let another AI agent hand work to SimpleClaw (0.4 and later). |
+<<<<<<< HEAD
 | [🐳 Server mode](docs/server-mode.md) | Run it headless in a container — deployment, configuration, secrets (0.7 and later). |
 | [🧩 Custom functions](docs/functions.md) | Give the agent a function of your own, no rebuild (0.5 and later; 0.2–0.4 used [plugins](docs/plugins.md)). |
+=======
+| [🧩 Custom functions](docs/functions.md) | Give the agent a function of your own, no rebuild (0.5 and later). |
+>>>>>>> 2b30362c23a1e280038ee445c370aca86e5f4ebd
 | [🔒 Safety & privacy](docs/safety-and-privacy.md) | Guardrails, safe use, data handling. |
 | [🛠 Troubleshooting](docs/troubleshooting.md) | Fixes for common issues. |
+| [🗒 Release notes](docs/release-notes.md) | What changed in each release, newest first. |
 
 ## Requirements
 

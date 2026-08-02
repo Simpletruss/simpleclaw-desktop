@@ -1,6 +1,10 @@
 # Getting started
 
+<<<<<<< HEAD
 [← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+=======
+[← Docs home](index.html) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+>>>>>>> 2b30362c23a1e280038ee445c370aca86e5f4ebd
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/getting-started.html)
@@ -48,16 +52,36 @@ differently:
 SimpleClaw needs a **vision-capable AI model** to see your screen. You point it at
 your provider once.
 
-1. Open **⚙ Settings**.
-2. Enter:
-   - **Base URL** — your provider's API address (an OpenAI-compatible
-     `/v1/chat/completions` endpoint).
-   - **API key** — your access key for that provider.
-   - **Model name** — the exact vision model to use.
-3. Save.
+A fresh install already points at a **hosted gateway**, so there's nothing to install
+locally to get started — you only need a key for it.
 
-> Don't have these details? Ask whoever set up your AI model access for the base
+1. Open **⚙ Settings** and open the model settings for the **Planner**.
+2. Pick your **Provider** (*new in 0.6*). Choosing one fills in its address and offers its
+   models, so usually the only thing left to type is the key:
+
+   | Provider | Points at | You supply |
+   |----------|-----------|------------|
+   | **Floxi** | The hosted gateway SimpleClaw ships with — the default | An API key |
+   | **OpenAI** · **Anthropic** | That vendor's cloud API | An API key |
+   | **Google** | A local inference server on `localhost:8080`, serving Google models. Change the address to `https://generativelanguage.googleapis.com/v1beta` to use the Gemini cloud API instead | A key, for the cloud API |
+   | **Qwen** | A local inference server on `localhost:8080` | Nothing, if it's on this machine |
+   | **Custom (OpenAI-compatible)** | Any other server speaking `/v1/chat/completions` — your own vLLM, LM Studio, llama.cpp, or a company gateway | The address, and a key if it wants one |
+
+3. Check the three fields under it:
+   - **Base URL** — the API address. Pre-filled from the provider; editable.
+   - **API key** — your access key. Stored locally on your machine, never sent anywhere
+     but that endpoint.
+   - **Model name** — the exact model to use. **It must be vision-capable**, since the
+     agent works from screenshots. Providers with a known catalog list their models here;
+     a Custom endpoint lists whatever it reports itself, and takes free text.
+4. Save.
+
+> Don't have these details? Ask whoever set up your AI model access for the provider, base
 > URL, key, and model name.
+
+> **Changing provider replaces the address and model** in that field with the new
+> provider's defaults — it doesn't merge with what you had. Note anything custom before
+> switching.
 
 ## 3. Run your first task (safely)
 
