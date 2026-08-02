@@ -122,7 +122,22 @@ on that agent, or the scheduled run will only plan.
 
 Details → [Running a task later](user-guide.md#running-a-task-later-scheduling).
 
-## 6. Optional — let another AI agent hand it work
+## 6. Optional — chain steps into one process
+
+*New in 0.8.* When the work is a sequence — open a filing, submit it, then confirm it in the
+client portal — save it as a **scenario** and run the whole thing in one go. Each step names
+the agent that runs it, so a process spanning two systems is one scenario rather than two
+tasks you start by hand, and a step can hand a value it found (a reference number, a total) to
+the steps after it.
+
+The quickest way in: on the **Scenarios** page, describe the whole objective and press
+**Compose**. SimpleClaw splits it into steps, routes each to the agent whose system it needs,
+and shows you a draft to review before anything is saved. Every step is judged as it finishes,
+and the first one that doesn't pass stops the rest.
+
+Details → [Running a whole process](user-guide.md#running-a-whole-process-scenarios).
+
+## 7. Optional — let another AI agent hand it work
 
 *New in 0.4.* If you're building with an AI agent of your own, it can give SimpleClaw
 operations to carry out and read the answers back — useful when the systems in your process
@@ -133,7 +148,7 @@ own data folder; a program that reads those can submit tasks, follow each step l
 collect the result. The endpoints, the event stream, and the security trade-off →
 [Agent API](agent-api.md).
 
-## 7. Optional — run it on a server instead of a desktop
+## 8. Optional — run it on a server instead of a desktop
 
 *New in 0.7.* Once an agent works reliably against a website, it doesn't have to live on your
 machine. SimpleClaw can run **headless** — no window, nobody watching — as a service that

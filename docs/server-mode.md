@@ -88,6 +88,13 @@ timer inside one process, and several replicas would each fire the same one. Set
 `AUTOPLAY_SCHEDULER=on` if you run exactly one instance and want it anyway — otherwise
 schedule from outside and submit over the API.
 
+**Scenarios run here too** *(0.8)*. A [scenario](user-guide.md#running-a-whole-process-scenarios)
+saved in the desktop app travels with the agents you mount, and
+[`POST /v1/scenarios/{id}/run`](agent-api.md#running-a-whole-scenario) runs its steps across
+its agents with nothing on screen. The same rule as above applies per step: a step naming a
+desktop-scope agent is refused before step 1, not discovered halfway through. Values the steps
+reference but never produce have to arrive as `params` — there's nobody here to be asked.
+
 **It refuses to start when it couldn't work.** No agent in the active organization that
 could actually run — no browser-scope agent, or one with no model API key — is a startup
 failure with a readable message. So is an unknown provider name, a half-configured JWT
@@ -101,8 +108,8 @@ confusing error several layers from the setting that caused it.
 `simpleclaw-server-<version>-docker.tar.gz` — it's listed alongside the desktop installers.
 
 ```sh
-tar -xzf simpleclaw-server-0.7.0-docker.tar.gz
-cd simpleclaw-server-0.7.0
+tar -xzf simpleclaw-server-0.8.0-docker.tar.gz
+cd simpleclaw-server-0.8.0
 ```
 
 **2. Put your agents next to it,** in a folder called `orgs` — see
@@ -136,7 +143,7 @@ docker compose logs -f      # the first build takes a few minutes
 
 ```sh
 curl http://localhost:8790/v1/ready
-# {"ok":true,"version":"0.7.0"}
+# {"ok":true,"version":"0.8.0"}
 ```
 
 If it exited instead, the log names the reason —
@@ -348,8 +355,8 @@ If your platform wants an image in a registry rather than a build context, build
 once and push it yourself:
 
 ```sh
-docker build -t your-registry.example.com/simpleclaw-server:0.7.0 .
-docker push your-registry.example.com/simpleclaw-server:0.7.0
+docker build -t your-registry.example.com/simpleclaw-server:0.8.0 .
+docker push your-registry.example.com/simpleclaw-server:0.8.0
 ```
 
 **Storage.** Agents need a read-write filesystem the container can see. On Azure Container

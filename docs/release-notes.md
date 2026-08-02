@@ -10,14 +10,62 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.7.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.8.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.7 — Runs as a server
+## 0.8 — Scenarios across agents
 
 *Current release.*
+
+**One saved process can now span several agents.** A [scenario](user-guide.md#running-a-whole-process-scenarios)
+is an ordered list of steps run as a single **pass**, and each step names **which agent runs
+it** — so a process that starts in a client portal and finishes in a staff console is one
+scenario rather than two you sequence by hand. Steps that used to be stuck on the agent that
+recorded them can be re-pointed with a picker, and the builder warns when a step still carries
+a recipe recorded on a different application.
+→ [Running a whole process](user-guide.md#running-a-whole-process-scenarios)
+
+**Steps hand values to each other.** A step declares what it **produces** — a short name and
+what to report — and any later step writes `{{that_name}}` in its task text. The value is
+substituted before the step starts, and the pass records what was bound. A `{{reference}}`
+that nothing produces isn't an error: SimpleClaw asks for it before the pass begins, or takes
+it from the `params` an API caller supplies.
+→ [Passing values between steps](user-guide.md#passing-values-between-steps)
+
+**Describe the whole objective and let it be divided.** **Compose** now runs a routing stage
+first: it splits what you typed into system-bounded steps, assigns each to the agent whose
+system it needs, and works out which values have to cross between them — then plans each step
+against that agent's own demonstrations, as before. With a single agent configured nothing
+changes; the divider isn't consulted at all.
+
+**A pass no longer needs a window.** Sequencing moved out of the renderer, so a pass runs from
+the [scheduler](user-guide.md#running-a-task-later-scheduling) or over the API with nothing on
+screen — including [in server mode](server-mode.md). Each step is judged as it finishes; the
+first step the outcome judge rejects aborts the pass and the rest are marked skipped. A step
+that finishes but never reports a value it promised **fails**, rather than letting the next
+step run against a literal `{{placeholder}}`.
+
+**Scenarios over the Agent API.** `GET /v1/scenarios` lists them with the agents each one
+touches, `POST /v1/scenarios/{id}/run` starts a pass and returns `202` with a `passId`, and
+`/v1/passes/{id}` polls it, streams it, or stops it. This is the surface for an orchestrator
+that wants a whole process rather than one operation at a time.
+→ [Running a whole scenario](agent-api.md#running-a-whole-scenario)
+
+**Fixed:** `POST /v1/runs/{id}/conclude` — end a run but keep what it found — was documented
+and implemented but unreachable over HTTP; the route table had drifted from the matcher. It
+now answers, and the run page's link token may use it.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.8.0** | Per-step agents, values between steps, the routing stage in Compose, headless passes, and the scenario API. |
+
+---
+
+## 0.7 — Runs as a server
 
 **SimpleClaw doesn't have to be an app on somebody's desktop.** It can run **headless** — no
 window, no `F9`, nobody watching — exposing only its control API, so another system can hand

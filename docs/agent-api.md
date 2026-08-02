@@ -14,7 +14,12 @@ your business but has no way to touch your systems.
 The interface is a small **HTTP API** with a **live event stream**. In the desktop app it is
 on `127.0.0.1` only, protected by a token that changes every launch.
 
-> **New in 0.7 — the caller no longer has to be on the same machine.** SimpleClaw can run
+> **New in 0.8 — a caller can hand over a whole process, not just one operation.** If the
+> sequence is one you've already saved as a [scenario](user-guide.md#running-a-whole-process-scenarios),
+> `POST /v1/scenarios/{id}/run` runs all of its steps, across all of their agents, as one pass
+> you follow on a single stream. See [Running a whole scenario](#running-a-whole-scenario).
+
+> **From 0.7 — the caller no longer has to be on the same machine.** SimpleClaw can run
 > [as a headless server](server-mode.md), typically in a container: the same endpoints and
 > the same event stream, but reachable over the network and authenticated with a token or a
 > JWT you configure. Everything on this page applies to both; where they differ it says so.
@@ -27,12 +32,13 @@ on `127.0.0.1` only, protected by a token that changes every launch.
 2. [Connecting](#connecting)
 3. [The endpoints](#the-endpoints)
 4. [Watching a run happen](#watching-a-run-happen)
-5. [A worked example](#a-worked-example)
-6. [How runs behave](#how-runs-behave)
-7. [Rules a caller must follow](#rules-a-caller-must-follow)
-8. [Security](#security)
-9. [Limits](#limits)
-10. [Troubleshooting](#troubleshooting)
+5. [Running a whole scenario](#running-a-whole-scenario)
+6. [A worked example](#a-worked-example)
+7. [How runs behave](#how-runs-behave)
+8. [Rules a caller must follow](#rules-a-caller-must-follow)
+9. [Security](#security)
+10. [Limits](#limits)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -104,6 +110,11 @@ error — nothing here can launch the app.
 | `POST /v1/runs/{id}/stop` | Stop a run, or cancel one that is still queued. |
 | `POST /v1/runs/{id}/conclude` | End a run but **keep** what it found, as the answer. The gentler half of `/stop`. |
 | `POST /v1/window/show` | Bring SimpleClaw's window forward so a person can watch or take over. |
+| `GET /v1/scenarios` | *0.8.* The saved scenarios, with the agents each one touches. |
+| `POST /v1/scenarios/{id}/run` | *0.8.* Start a pass. Returns `202` with a `passId`. |
+| `GET /v1/passes/{id}` | *0.8.* Poll one pass: every step's outcome, values, and judge verdict. |
+| `GET /v1/passes/{id}/events` | *0.8.* The live pass stream. |
+| `POST /v1/passes/{id}/stop` | *0.8.* Stop a pass in flight. |
 
 > **Changed in 0.7:** `GET /v1/health` used to return the operational view; that is now
 > `GET /v1/status`. Health and readiness were split so a container platform can probe them
@@ -203,6 +214,88 @@ They can't read the result, answer a question, or reach another run. On a server
 `AUTOPLAY_PUBLIC_URL` to the address the executor is reached by from outside or no link is
 offered at all, which is the correct default for a deployment nobody can reach.
 
+## Running a whole scenario
+
+*New in 0.8.*
+
+Everything above is one operation at a time, with the caller holding the flow. When that flow
+is one you run repeatedly, saving it as a
+[scenario](user-guide.md#running-a-whole-process-scenarios) moves the sequencing into
+SimpleClaw: the steps, which agent runs each one, and which values pass between them are
+already decided, so the caller starts a **pass** and watches.
+
+Reach for a scenario when the process is fixed and repeated; keep driving `/v1/runs` yourself
+when the caller decides what to do next based on what came back.
+
+**Find one.** `GET /v1/scenarios`:
+
+```json
+{
+  "scenarios": [
+    { "id": "sc-4f2", "name": "File a Q1 return", "stepCount": 3,
+      "agentIds": ["client-portal", "staff-console"] }
+  ]
+}
+```
+
+`agentIds` is the distinct set of agents its steps name — enough to see that a scenario crosses
+systems without fetching the whole thing.
+
+**Start a pass.** `POST /v1/scenarios/sc-4f2/run`, optionally supplying the values the steps
+reference but no step produces:
+
+```json
+{ "params": { "client": "Redwood Holdings", "quarter": "Q1 2025" } }
+```
+
+```json
+{ "passId": "m4x2k9-a1b2c3", "steps": 3 }
+```
+
+`202`, like `POST /v1/runs` — a pass takes many minutes and the response doesn't wait for it.
+Refusals are specific, and all of them happen **before step 1 runs**:
+
+| Code | Why |
+|------|-----|
+| `409` | A run or another pass is already in flight. One pass at a time. |
+| `404` | No scenario with that id. |
+| `400` | Every step's task is blank. |
+| `422` | A value is missing (`missing` lists what to supply as `params`), or a step's agent is unknown or can't run here — a desktop-scope agent on a server, say. `stepIndex` names the step. |
+| `403` | A step names an agent belonging to another organization. |
+
+Unlike the app, an API caller is never asked to fill in a missing value mid-flight and never
+offered "run anyway": there's nobody at the screen, so the pass is refused and the refusal is
+recorded where the app will show it.
+
+**Follow it.** `GET /v1/passes/{id}/events` is SSE, and behaves like the run stream: a `state`
+frame first — the whole pass as it stands, so a late subscriber is never behind — then a new
+`state` on every change, and a final `result` carrying the stored record before the stream
+closes. Ask about a pass that has already finished and you get its record and a clean close
+rather than a socket that never speaks. `GET /v1/passes/{id}` polls the same record.
+
+A pass state carries the steps as they were at launch, the index of the step in flight, the
+in-flight `runId` (so you can attach to that step's own run stream, live link and all), and
+one entry per finished step:
+
+```json
+{
+  "goal": "file the Q1 2025 return for Redwood Holdings using bundle reference DOC-2024-7741",
+  "agentId": "staff-console",
+  "runId": "r-91f2",
+  "outcome": "passed",
+  "bindings": { "bundle_ref": "DOC-2024-7741" },
+  "outputs": { "filing_number": "NW-48213" },
+  "judge": { "ok": true, "reason": "The filing list shows NW-48213 as submitted." }
+}
+```
+
+`goal` is the task **as actually run**, with references already substituted; `bindings` says
+what they were substituted with, and `outputs` is what this step produced for the ones after
+it. `outcome` is `passed`, `failed`, or `skipped` — the first failure aborts the pass and every
+later step is recorded as skipped, so the record always accounts for all of them.
+
+**Stop it.** `POST /v1/passes/{id}/stop`, which is a `409` if that pass isn't the one running.
+
 ## A worked example
 
 A caller asked *"get Redwood Holdings' exemption certificate reference and file their Q1
@@ -225,6 +318,11 @@ outcomes; SimpleClaw knew the screens.
 The result also carries **`demoCoverage`** — how much of the plan a demonstration informed.
 On a *failure* that number is the actionable part: low coverage means this operation was
 never taught here, so the fix is to record a demonstration, not to try again.
+
+> Steps 2 and 3 are exactly what a [scenario](#running-a-whole-scenario) saves: the same two
+> operations, on the same two agents, with `bundle_ref` declared as the value the first one
+> hands to the second. Once a flow is settled, the caller can start it as one pass instead of
+> re-deriving the sequence each time.
 
 ## How runs behave
 
@@ -251,7 +349,9 @@ never taught here, so the fix is to record a demonstration, not to try again.
 ## Rules a caller must follow
 
 - **One operation per run.** Decompose on the caller's side. A run should be something a
-  person would describe as a single step.
+  person would describe as a single step. A saved
+  [scenario](#running-a-whole-scenario) is the exception, and only because its decomposition
+  was done in advance by a person.
 - **Never resubmit a failed run to "just try again".** SimpleClaw does not auto-retry, for
   the same reason: a resubmitted filing or order is a real duplicate on the far end. When a
   run fails part-way, decide deliberately what to do about the partial work.

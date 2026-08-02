@@ -9,7 +9,11 @@
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
 
-> **New in 0.7:** SimpleClaw can run as a **headless server**, usually in a container, with
+> **New in 0.8:** a **scenario** can carry work across several agents and systems in one
+> unattended pass, with values from one system typed into the next. See
+> [Processes that run themselves](#processes-that-run-themselves).
+
+> **From 0.7:** SimpleClaw can run as a **headless server**, usually in a container, with
 > its API reachable over the network rather than only from this machine. That is a different
 > threat model from everything else on this page — see
 > [Running it as a server](#running-it-as-a-server).
@@ -153,6 +157,41 @@ are therefore about limiting the damage such an instruction could do:
 - Leave **writes off** unless the agent's job genuinely is to change data.
 - Remember the token is **stored unencrypted** with the agent, the same as your model API
   key (see [Privacy and data handling](#privacy-and-data-handling)).
+
+## Processes that run themselves
+
+*New in 0.8.* A [scenario](user-guide.md#running-a-whole-process-scenarios) runs several steps
+in a row, across several agents, from one press of Run — or from a schedule, with nobody
+there. The individual steps are ordinary runs with the usual brakes; what's new is the chain.
+
+**What the design already does for you**
+
+- **It stops at the first failure.** Every step is judged against its success criterion, and
+  a step the judge rejects aborts the pass. The steps after it are recorded as skipped, not
+  attempted — so a broken prerequisite can't feed a step that submits something.
+- **It won't act on a value it never got.** A step that finishes without reporting a value it
+  promised fails the pass, rather than letting the next step run with a literal
+  `{{placeholder}}` in the text it types.
+- **Unattended launches don't guess.** Started from a schedule or the API, a pass missing a
+  value is refused rather than run without it. Only in the app — where a person is looking —
+  is there a "run anyway".
+- **Each step is a separate run in history**, replayable frame by frame, so an odd result is
+  traceable to the step that caused it.
+
+**What to weigh before saving one**
+
+- **A pass is a chain of real actions.** Judge it by what the *whole* sequence can do, not by
+  the worst single step. The riskiest step should be one you'd be comfortable running
+  unattended on its own.
+- **Values cross systems.** A reference read from one application is typed into another —
+  that's the point, and it also means a scenario moves data between systems on a schedule.
+  Check that hand-off is one your organization is happy with.
+- **Aborting mid-pass leaves partial work.** Steps already completed have happened; nothing
+  is rolled back. Prefer an order that puts the irreversible step last, and read the pass
+  record before re-running rather than starting again from step 1.
+- **Never write a password into a step.** Step text is stored in the scenario and in every
+  pass record. Let the agent use the sign-in
+  [a human gave it once](user-guide.md#staying-signed-in).
 
 ## Letting another program drive it
 

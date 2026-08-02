@@ -6,9 +6,13 @@
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
 > labels each page with its release and can switch between versions.
 
-The complete manual for SimpleClaw 0.7 (Windows, macOS, and Linux).
+The complete manual for SimpleClaw 0.8 (Windows, macOS, and Linux).
 
-> **New in 0.7:** SimpleClaw can run **without a window at all** — as a headless service that
+> **New in 0.8:** a saved **scenario** can span agents — each step names the agent that runs
+> it, steps hand **values** to each other, and a pass runs without a window open. See
+> [Running a whole process](#running-a-whole-process-scenarios).
+
+> **From 0.7:** SimpleClaw can run **without a window at all** — as a headless service that
 > only exposes its API, deployed with Docker, for when the work should happen on a server
 > rather than on somebody's desktop. See
 > [Running it as a server](#running-it-as-a-server).
@@ -47,18 +51,19 @@ The complete manual for SimpleClaw 0.7 (Windows, macOS, and Linux).
 2. [How it works](#how-it-works)
 3. [The interface](#the-interface)
 4. [Running a task](#running-a-task)
-5. [Running a task later (scheduling)](#running-a-task-later-scheduling)
-6. [Running many tasks at once (advanced)](#running-many-tasks-at-once-advanced)
-7. [Where the agent works (Scope)](#where-the-agent-works-scope)
-8. [Letting another agent drive it](#letting-another-agent-drive-it)
-9. [Running it as a server](#running-it-as-a-server)
-10. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
-11. [Writing good goals](#writing-good-goals)
-12. [Action types](#action-types)
-13. [Settings reference](#settings-reference)
-14. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
-15. [Current limitations](#current-limitations)
-16. [Glossary](#glossary)
+5. [Running a whole process (scenarios)](#running-a-whole-process-scenarios)
+6. [Running a task later (scheduling)](#running-a-task-later-scheduling)
+7. [Running many tasks at once (advanced)](#running-many-tasks-at-once-advanced)
+8. [Where the agent works (Scope)](#where-the-agent-works-scope)
+9. [Letting another agent drive it](#letting-another-agent-drive-it)
+10. [Running it as a server](#running-it-as-a-server)
+11. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
+12. [Writing good goals](#writing-good-goals)
+13. [Action types](#action-types)
+14. [Settings reference](#settings-reference)
+15. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
+16. [Current limitations](#current-limitations)
+17. [Glossary](#glossary)
 
 ---
 
@@ -162,6 +167,122 @@ in the run view where you're already looking.
 When the run ends, the bar closes. A window the **run** minimized is restored; a window
 **you** put away stays put.
 
+## Running a whole process (scenarios)
+
+*Scenarios are older than 0.8; what 0.8 changed is that **one scenario can span several
+agents**, and its steps can hand values to each other.*
+
+A **scenario** is a saved sequence of steps that run in order as one **pass**. Each step is a
+task, on a named agent, judged before the next one starts. It's what you reach for when the
+work is a *process* rather than a task — "open a filing, then submit it, then confirm it in
+the client portal" — and especially when the parts live in different systems.
+
+The **Scenarios** page in the sidebar lists your saved scenarios, their passes, and any
+schedules attached to them.
+
+### What a step is
+
+| Part of a step | What it's for |
+|----------------|---------------|
+| **Agent** | Which agent runs it — a picker, changeable at any time. This is what lets one scenario cross systems. |
+| **Task** | What to do this time, in plain language. May contain `{{references}}` to earlier steps' values. |
+| **Reference procedure** | The recipe distilled from a recorded demonstration, cached so it isn't re-derived every pass. Editable, and **Regenerate** re-distills it against the current task. Leave it empty and it's distilled when the step runs. |
+| **Success criterion** | What the screen should show if the step truly worked. Optional; the task itself is the default. It's what the outcome judge grades against, so an agent that *says* it succeeded can still fail the step. |
+| **Produces** | Values this step must report, so later steps can use them — see below. |
+
+A badge on each step says what it's backed by:
+
+- **SUPERVISED** — a recorded demonstration on this agent. The reference run's goal is shown
+  beside it.
+- **IMPROVISED** — no demonstration covered this sub-task, so the agent plans it from the task
+  text alone. Legitimate, but the least predictable kind of step.
+- **REF FROM &lt;other agent&gt;** — you moved this step to a different agent and its recipe was
+  recorded on the old one, where it describes a *different application*. **clear** drops the
+  recipe and lets the new agent work the step out.
+- **MISSING** — the reference run was deleted since; the step runs as a plain task.
+
+### Building one
+
+Two ways, both on the Scenarios page:
+
+- **Describe the objective and press Compose.** SimpleClaw splits what you typed into
+  independent tasks (a pasted numbered list is several tasks, not one), works out which agent
+  each part needs, and plans each against that agent's own demonstrations. Nothing is saved
+  until you press Save, so the result is a draft to review and edit.
+- **Pick from your demonstrations.** Your **Supervised** runs are listed grouped by agent;
+  adding one appends a step on that agent with its procedure already distilled. Then edit the
+  task into the similar one you want done this time.
+
+> **The routing stage only runs when there's more than one agent** to route between. With a
+> single agent configured, Compose behaves exactly as it did before.
+
+Steps can be reordered with **↑ / ↓** and removed with the bin. A scenario needs a **name**
+before it can be saved.
+
+### Passing values between steps
+
+*New in 0.8.* A step's answer often decides what the next step does — a reference number, a
+filing id, a total. Rather than you copying it across by hand, the step **produces** it:
+
+1. On the step that finds the value, add a **Produces** entry: a short `snake_case` name and a
+   description of what to report and its form (*"the bundle reference, DOC-YYYY-NNNN"*). The
+   description is what the agent is asked to report, so vagueness there costs you accuracy.
+2. On a later step, write **`{{bundle_ref}}`** anywhere in the task text — or use the insert
+   button, which offers only the values earlier steps actually produce.
+
+Before each step runs, its references are substituted and the pass records the bindings, so a
+report six weeks later reads as the task that actually ran, not as a template.
+
+The rules, all checked as you type and again at launch:
+
+- **A name may be produced once** in a scenario. Two steps claiming `total` is rejected.
+- **A step can't reference its own value, or a later step's.** Only what's already been
+  produced is in scope.
+- **A reference nothing produces is a question, not an error.** SimpleClaw asks for those
+  values before the pass starts. Started from a [schedule](#running-a-task-later-scheduling) or
+  the [API](agent-api.md), where nobody is there to answer, the pass is **refused** instead and
+  the refusal is recorded — an unattended run has no safe "go ahead without it".
+- **A step that finishes without reporting a value it promised fails the pass.** The
+  alternative is the next step running against the literal text `{{bundle_ref}}` and failing
+  somewhere that looks unrelated to the real cause.
+
+### What happens during a pass
+
+Steps run **one at a time, in order**, each as an ordinary run that lands in history like any
+other. After each one the **outcome judge** looks at the result against that step's success
+criterion. The **first step that doesn't pass aborts the pass**, and the remaining steps are
+recorded as *skipped* rather than quietly dropped — the steps are dependent, so carrying on
+would only produce noise.
+
+Each step gets a **fresh browser** unless the step asks to continue in the previous one. That
+default is deliberate: a scenario whose first step signs in and whose second acts is testing
+that the second works from a clean session, and starting it warm quietly changes what a pass
+proves.
+
+**Passes don't need a window.** Sequencing happens inside SimpleClaw itself, so a pass runs the
+same way when it's started by the scheduler, by the [Agent API](agent-api.md#running-a-whole-scenario),
+or on a [server](#running-it-as-a-server) with no screen at all.
+
+### Reading a pass afterwards
+
+Every pass is kept as its own numbered record — running a scenario again adds a row rather
+than overwriting the last result. Each step in it shows the agent that ran it, the task as
+actually run, its outcome, the judge's reason, the values it produced, and a link to that
+step's own run so you can step through the frames.
+
+### Things worth knowing
+
+- **One pass at a time.** A pass won't start while a run or another pass is in flight, and a
+  scheduled occurrence that lands at that moment is skipped.
+- **A step's agent must be one this SimpleClaw can run.** A step pointing at a deleted agent,
+  an agent from another organization, or a desktop agent on a [server](#running-it-as-a-server)
+  is refused at launch, naming the step — not discovered halfway through.
+- **Consecutive steps on the same agent are allowed but flagged.** Same agent means same
+  system, so the boundary costs a cold browser for nothing — unless you wanted the fresh
+  session.
+- **Set the stage first.** For agents working on your real screen, a pass assumes the desktop
+  starts in the expected state, exactly as a single task does.
+
 ## Running a task later (scheduling)
 
 *New in 0.6.*
@@ -178,7 +299,7 @@ Times are **local** and go down to the **minute**; there are no seconds anywhere
 |-------|-------------------|
 | **New Task → Schedule** | The task you just described, on the agent that was matched to it. The one-off case: "not now, at 3pm." |
 | **Agent → Chronos → Schedule** | A standing wake-up for *that* agent: a task plus a time, kept with the agent. Use it for recurring work ("every day at 09:30, check for new work orders"). |
-| **Scenarios → Schedule** | A whole saved scenario — its steps run in order as one pass, the same as pressing Run. |
+| **Scenarios → Schedule** | A whole saved [scenario](#running-a-whole-process-scenarios) — its steps run in order as one pass, across whichever agents they name, the same as pressing Run. |
 | **Just say when** | Put the timing in the task itself — *"in 10 minutes, …"*, *"every day at 9, …"* — and **Chronos** reads it out of the wording and schedules the run instead of starting it. |
 
 Every one of them offers the same four repeat kinds:
@@ -610,10 +731,13 @@ description, the agent's persona, or a skill. Full details and worked examples:
 
 ## Current limitations
 
-SimpleClaw 0.7.x is still an early release:
+SimpleClaw 0.8.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
-  browser; it can't span several at once.
+  browser; it can't span several at once. A [scenario](#running-a-whole-process-scenarios)
+  crosses systems by giving each *step* its own agent, not by widening one run.
+- **Scenario steps run in sequence, never in parallel** — and one pass at a time. Two steps
+  that don't depend on each other still wait their turn.
 - **One run at a time in the window** — and over the [Agent API](agent-api.md), which
   queues rather than running in parallel. Running several at once means either the
   source-only [batch command](#running-many-tasks-at-once-advanced), which starts a
@@ -661,6 +785,16 @@ SimpleClaw 0.7.x is still an early release:
   [Agent API](agent-api.md).
 - **Operation** — one unit of work a caller hands over: a single business step an agent has
   been demonstrated doing, like "submit a filing".
+- **Scenario** — a saved sequence of steps that run in order as one pass. Each step names
+  the agent that runs it, so a scenario can cross systems. See
+  [Running a whole process](#running-a-whole-process-scenarios).
+- **Pass** — one execution of a scenario, start to finish. Each pass is kept as its own
+  record, so re-running a scenario adds a result rather than replacing the last one.
+- **Produced value** — something a step is required to report (`bundle_ref`), which later
+  steps use by writing `{{bundle_ref}}` in their task text.
+- **Outcome judge** — the check applied after a step finishes: does the screen show what the
+  step's success criterion described? It's what stops an agent's own "done" from being taken
+  at face value.
 - **Schedule** — a saved "run this later": a task (or scenario) plus a time, once or
   repeating. Held by SimpleClaw itself, so the app must be running when it fires. See
   [Running a task later](#running-a-task-later-scheduling).

@@ -37,7 +37,17 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.7 — it can run as a server.** SimpleClaw doesn't have to be an app on somebody's
+**New in 0.8 — one saved process, several agents.** A **scenario** is an ordered list of steps
+run as a single pass, and each step now names **which agent runs it** — so a process that
+starts in a client portal and finishes in a staff console is one scenario instead of two you
+sequence by hand. Steps hand values to each other: a step declares what it must report
+(*the bundle reference*), and a later step writes `{{bundle_ref}}` in its task. Describe the
+whole objective and **Compose** divides it into steps and routes each one for you. A pass runs
+without a window open — from the scheduler, or over the API with
+`POST /v1/scenarios/{id}/run`. See
+[Running a whole process](docs/user-guide.md#running-a-whole-process-scenarios).
+
+**From 0.7 — it can run as a server.** SimpleClaw doesn't have to be an app on somebody's
 desktop. It can run **headless** — no window, nobody watching — exposing only its API, and it
 ships as a **deployment bundle** on the [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases/latest)
 (`simpleclaw-server-<version>-docker.tar.gz`): extract it, `docker compose up -d`, and Docker
@@ -147,7 +157,7 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 |-------|--------------|
 | [🌐 Website](https://simpletruss.github.io/simpleclaw-desktop/) | The polished overview and hub. |
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
-| [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, and tips. |
+| [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, scenarios, and tips. |
 | [🔌 Agent API](docs/agent-api.md) | Let another AI agent hand work to SimpleClaw (0.4 and later). |
 | [🐳 Server mode](docs/server-mode.md) | Run it headless in a container — deployment, configuration, secrets (0.7 and later). |
 | [🧩 Custom functions](docs/functions.md) | Give the agent a function of your own, no rebuild (0.5 and later). |
