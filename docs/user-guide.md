@@ -742,6 +742,7 @@ and SimpleClaw finds it, checks the spot, and acts, all within the one step.
 | `double` | Double-click it — e.g. to open a desktop icon. |
 | `right` | Right-click it, to open a context menu. |
 | `hover` | Move the pointer onto it **without** clicking. Two uses: reveal the tooltip of a value that is cut off on screen, and aim the next `scroll` at an open menu or an inner panel. |
+| `drag` | Drag one element onto another — **both named in the same step**, since a press and a release can't be split across two. This is how anything gets **reordered**: to move a row up a list, it is dragged onto the row whose position it should take. Also moves a card between columns, or pulls a slider handle to a spot. |
 | `input` | Type into a field, locating and focusing it first if it isn't already. Clears the field, so it *replaces* rather than appends. |
 | `type` | Type into the field that is **already** focused — no locating, so it can't drift onto a neighbouring icon. |
 | `hotkey` | Press a keyboard shortcut, e.g. `ctrl c`, `enter`, `end`. |

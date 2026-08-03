@@ -76,6 +76,7 @@ server that passes **Check** still refuses the app.
 
 | Release | What it added |
 |---------|---------------|
+| **0.9.1** | **Drag and drop.** The agent can reorder a list, move an item between columns, or pull a handle — work no click can do, because a drag-only list offers no button to press. It names both ends of the drag in one step, then re-reads the order to confirm the drop was accepted. → [Action types](user-guide.md#action-types) |
 | **0.9.0** | The server picker, remote views of runs/scenarios/schedules, remote runs and passes, agent and scenario upload, the server registry with **Check**, and one runtime behind both modes. |
 
 ---

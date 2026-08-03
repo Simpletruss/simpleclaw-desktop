@@ -135,7 +135,7 @@ On every loop the model chooses exactly one action:
 | `click` | Single left-click at a point. |
 | `left_double` | Double-click (e.g. to open an item). |
 | `right_single` | Right-click (context menus). |
-| `drag` | Press, move, and release from one point to another. |
+| `drag` | Drag one element onto another — how a list gets reordered, or an item moved. |
 | `hotkey` | Press a keyboard shortcut (e.g. Ctrl+S). |
 | `type` | Type a string of text. |
 | `scroll` | Scroll the view up or down. |
