@@ -37,7 +37,19 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.8 — one saved process, several agents.** A **scenario** is an ordered list of steps
+**New in 0.9 — one app, this computer or a server.** The desktop app and a deployed server
+stopped being two separate things. A **server picker in the title bar** chooses which machine
+the window is looking at — **This computer**, or any server you've registered under
+**⚙ Settings → Remote servers** — and the pages don't change, only where their data comes from.
+Pointed at a deployment you see its agents, its run history, its scenarios and its schedules;
+you can start a run or a whole scenario pass there and watch it live; and you can **send an
+agent to it** from **Agents → General → Upload to a remote server** instead of copying folders
+around. Remote views are read-only by design — agents are authored on the machine that owns
+them and pushed, and an upload always creates rather than overwriting. Underneath, both modes
+are now one build and one runtime: the same startup, the same configuration, the same API, the
+same web UI. See [Pointing it at a server](docs/user-guide.md#pointing-it-at-a-server).
+
+**From 0.8 — one saved process, several agents.** A **scenario** is an ordered list of steps
 run as a single pass, and each step now names **which agent runs it** — so a process that
 starts in a client portal and finishes in a staff console is one scenario instead of two you
 sequence by hand. Steps hand values to each other: a step declares what it must report

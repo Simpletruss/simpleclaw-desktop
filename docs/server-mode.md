@@ -15,6 +15,15 @@ This is the same agent loop and the same agents as the desktop app. What changes
 everything that assumed a person: no window, no `F9`, no auto-update, and configuration from
 the environment instead of a settings screen.
 
+> **New in 0.9 — one runtime, and the app is its client.** Desktop and server are the same
+> build: the same startup sequence, the same environment configuration, the same control API,
+> and the same web UI, which is why a server hands out a run page that looks like the app.
+> Server mode is now only the difference a deployment actually needs — no window, no person —
+> rather than a second product. And you no longer need `curl` to work with one: register it in
+> the desktop app and the same pages show what it's doing, start runs on it, and
+> [send it agents](#sending-an-agent-from-the-desktop-app). See
+> [Pointing it at a server](user-guide.md#pointing-it-at-a-server).
+
 ---
 
 ## Table of contents
@@ -24,15 +33,17 @@ the environment instead of a settings screen.
 3. [What changes in server mode](#what-changes-in-server-mode)
 4. [Get it running](#get-it-running)
 5. [Bringing your agents](#bringing-your-agents)
-6. [Configuration](#configuration)
-7. [Signing in without a person](#signing-in-without-a-person)
-8. [Authentication](#authentication)
-9. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
-10. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
-11. [Running it somewhere real](#running-it-somewhere-real)
-12. [Security](#security)
-13. [Upgrading](#upgrading)
-14. [Limits](#limits)
+6. [Sending an agent from the desktop app](#sending-an-agent-from-the-desktop-app)
+7. [Letting the desktop app reach it](#letting-the-desktop-app-reach-it)
+8. [Configuration](#configuration)
+9. [Signing in without a person](#signing-in-without-a-person)
+10. [Authentication](#authentication)
+11. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
+12. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
+13. [Running it somewhere real](#running-it-somewhere-real)
+14. [Security](#security)
+15. [Upgrading](#upgrading)
+16. [Limits](#limits)
 
 ---
 
@@ -52,6 +63,10 @@ controls, teaching an agent by demonstration. Server mode is for the cases where
 If you just want SimpleClaw to do things on **your own screen**, stay with the desktop app —
 server mode can't do that at all, and [the next section](#what-changes-in-server-mode) says
 why.
+
+**It isn't either/or.** Since 0.9 the usual arrangement is both: you author and rehearse agents
+in the desktop app, push them to a server, and keep using the app as the window onto what that
+server is doing. See [Pointing it at a server](user-guide.md#pointing-it-at-a-server).
 
 ## What you need
 
@@ -83,6 +98,14 @@ them, so nothing added to the desktop app later can accidentally switch them bac
 replaces fields as they're read, and nothing is written back. That's what lets the container
 treat its own storage as disposable and keep no secret at rest.
 
+**Except for uploads, which are opt-in** *(0.9)*. `AUTOPLAY_ALLOW_AGENT_IMPORT=1` and
+`AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` open the one write that reaches in from outside — a *new*
+agent or scenario, built from the caller's bundle. They're separate switches from the read-only
+flag above, and from each other: an upload is a different write from an in-place edit, and a
+deployment that should receive agents may have no business holding scenarios. Off unless asked
+for, everywhere. See [Sending an agent from the desktop
+app](#sending-an-agent-from-the-desktop-app).
+
 **The scheduler is off.** A [schedule](user-guide.md#running-a-task-later-scheduling) is a
 timer inside one process, and several replicas would each fire the same one. Set
 `AUTOPLAY_SCHEDULER=on` if you run exactly one instance and want it anyway — otherwise
@@ -108,8 +131,8 @@ confusing error several layers from the setting that caused it.
 `simpleclaw-server-<version>-docker.tar.gz` — it's listed alongside the desktop installers.
 
 ```sh
-tar -xzf simpleclaw-server-0.8.0-docker.tar.gz
-cd simpleclaw-server-0.8.0
+tar -xzf simpleclaw-server-0.9.0-docker.tar.gz
+cd simpleclaw-server-0.9.0
 ```
 
 **2. Put your agents next to it,** in a folder called `orgs` — see
@@ -143,7 +166,7 @@ docker compose logs -f      # the first build takes a few minutes
 
 ```sh
 curl http://localhost:8790/v1/ready
-# {"ok":true,"version":"0.8.0"}
+# {"ok":true,"version":"0.9.0"}
 ```
 
 If it exited instead, the log names the reason —
@@ -214,6 +237,77 @@ Four more things follow from that folder being a mount:
   honest way to pick that up. It's safe during a run either way — the loop keeps the agent it
   started with, so a reload changes what the *next* run sees.
 
+**One mount, not two** *(0.9)*. The image keeps branding and agents in different places —
+branding baked in, agents under `{AUTOPLAY_DATA_DIR}/orgs` — and pointing `ORGANIZATIONS_DIR`
+at your mounted `orgs/` collapses them again, so a single mount covers both and the container
+sees exactly what the desktop app sees. The baked copy stays behind as the no-mount fallback,
+so an image run with no mount behaves as it always did.
+
+## Sending an agent from the desktop app
+
+*New in 0.9.*
+
+Copying an `orgs` folder is the deployment-time answer. The everyday one is **Agents → General
+→ Upload to a remote server**, which sends the same bundle the **Export** button writes to a
+file — the agent's config plus its attached MCP servers, its non-built-in skills, and its
+memory — straight to the server's import route. Scenarios go the same way, from the scenario
+page. It's the only route into a server that has none of your folders mounted.
+
+Register the server once in **⚙ Settings → Remote servers**; the fields and the **Check** probe
+are covered in [Pointing it at a server](user-guide.md#pointing-it-at-a-server).
+
+What the button does, if you'd rather do it yourself:
+
+```sh
+curl -X POST https://autoplay.example.com/v1/agents/import \
+  -H "Authorization: Bearer $AUTOPLAY_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary @work-order-bot.agent.json
+# 201 {"agentId":"work-order-bot","name":"Work Order Bot","skills":2,"supported":true}
+```
+
+Four rules worth knowing before you rely on it:
+
+- **Off unless asked for.** `AUTOPLAY_ALLOW_AGENT_IMPORT=1` enables the agent route,
+  `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` the scenario one. Without them the route answers `501` —
+  which **Check** reports up front rather than letting you discover it mid-upload.
+- **An upload always creates.** A colliding id gets a suffix instead of overwriting, so
+  re-uploading an edited agent yields a *second* agent rather than replacing one that may be
+  mid-run. The app tells you the name it landed under; delete the old one deliberately.
+- **Writes are one-way.** Nothing is edited or deleted over the wire, and the server offers no
+  route that would allow it. An agent is authored on the machine that owns it and pushed.
+- **`supported` in the response is the thing to read.** It answers *can this server actually
+  run what you just sent* — a desktop-scope agent uploads fine and then can't run, because a
+  container has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to
+  **Headless browser** first. A scenario upload likewise names any agents it needs that aren't
+  there yet.
+
+An executor started with imports enabled is allowed to boot with **no agents at all** — that's
+its normal first state, and refusing would be a deadlock, since the only way to put an agent in
+is the route that needs the server running. Everywhere else an empty roster is still a startup
+failure, because there it means the mount or `AUTOPLAY_ACTIVE_ORG` is wrong.
+
+## Letting the desktop app reach it
+
+*New in 0.9.*
+
+One setting lives on the server rather than in the app. The desktop app calls a server
+**directly from its window**, so the browser engine applies cross-origin rules: unless the
+server names the app's origin, the call is blocked before the server ever sees it, and the
+failure looks like a network error with nothing pointing at the fix.
+
+```sh
+AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173
+```
+
+`app://renderer` is the packaged app — a real, stable origin your deployment can allow, which
+is why the app is served over a registered scheme instead of `file://`. The second entry is
+only needed for a build run from source (`npm run dev`); listing both is harmless, and
+Settings → Remote servers shows the line with a **Copy** button.
+
+There is **no wildcard**, deliberately: this is a list of exactly which origins may drive
+software with your agents' authority.
+
 ## Configuration
 
 Everything is environment-driven — `.env` in the bundle, or however your platform injects
@@ -222,6 +316,7 @@ variables. Nothing set here is written back to disk.
 | Group | Variables |
 |-------|-----------|
 | **Mode** | `AUTOPLAY_DATA_DIR`, `ORGANIZATIONS_DIR`, `AUTOPLAY_ACTIVE_ORG`, `AUTOPLAY_AGENTS_READONLY`, `AUTOPLAY_AGENTS_WATCH_MS`, `AUTOPLAY_SCHEDULER` |
+| **Uploads** *(0.9)* | `AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT` — both off by default; see [above](#sending-an-agent-from-the-desktop-app) |
 | **HTTP** | `AUTOPLAY_HTTP_HOST` (server default `0.0.0.0`), `AUTOPLAY_HTTP_PORT` (8790), `AUTOPLAY_PUBLIC_URL`, `AUTOPLAY_CORS_ORIGINS`, `AUTOPLAY_MAX_QUEUE`, `AUTOPLAY_RUN_TTL_MIN`, `AUTOPLAY_PAUSE_TIMEOUT_MS` |
 | **Auth** | `AUTOPLAY_AUTH_MODE` (`static`\|`jwt`), `AUTOPLAY_API_TOKEN`, `AUTOPLAY_JWT_PUBLIC_KEY`, `AUTOPLAY_JWT_ISSUER`, `AUTOPLAY_JWT_AUDIENCE`, `AUTOPLAY_JWT_ALGS`, `AUTOPLAY_JWT_LEEWAY_S`, `AUTOPLAY_JWT_ORG_CLAIM`, `AUTOPLAY_RUN_OWNERSHIP` |
 | **Model** | `AUTOPLAY_MODEL_{PROVIDER,BASE_URL,API_KEY,MODEL}`, plus `AUTOPLAY_SYSTEM_MODEL_*` and `AUTOPLAY_DETECTOR_MODEL_*`, which fall back to it field by field |
@@ -355,8 +450,8 @@ If your platform wants an image in a registry rather than a build context, build
 once and push it yourself:
 
 ```sh
-docker build -t your-registry.example.com/simpleclaw-server:0.8.0 .
-docker push your-registry.example.com/simpleclaw-server:0.8.0
+docker build -t your-registry.example.com/simpleclaw-server:0.9.0 .
+docker push your-registry.example.com/simpleclaw-server:0.9.0
 ```
 
 **Storage.** Agents need a read-write filesystem the container can see. On Azure Container
@@ -394,6 +489,15 @@ agents' authority**, reachable by whatever can reach the port.
   Those stay decisions made in the agent's configuration.
 - **Runs are unattended by definition.** Nobody sees a step go wrong in real time. Every run
   is still recorded and replayable — check them.
+- **An upload route is a write; treat it as one** *(0.9)*. Turning on
+  `AUTOPLAY_ALLOW_AGENT_IMPORT` lets any authenticated caller add an agent to the roster. It's
+  bounded — an upload creates rather than overwrites, and an uploaded agent still can't be
+  edited over the wire — but it does mean the bearer on that server is now a credential that
+  can put *new* software in front of your sites. Enable it where uploads are how you deploy,
+  not everywhere.
+- **A registered server's token sits in the app's config** *(0.9)*, in plain text, the same as
+  your model API keys. Anyone with your user account on that machine can read it, so treat the
+  desktop app as a place production credentials are kept.
 - **Live links are run-scoped.** A link handed out for takeover authorises that one run: its
   frames, its recorded steps, driving it, and ending it. It doesn't carry your bearer token
   and can't reach another run. Anyone holding it can drive that browser, so treat it as
@@ -421,6 +525,9 @@ feature, and a service that replaces itself without being asked is not one.
 - **One run at a time per instance.** Scale with replicas.
 - **No teaching from a server.** Recording a demonstration, editing a persona, and
   configuring scope are done by a person in the desktop app; the server runs what it's given.
+  Since 0.9 that app can watch a server, start work on it and upload to it — but it still
+  can't *edit* anything there, and it isn't meant to: what a remote view shows belongs to the
+  machine that owns it.
 - **No MFA or CAPTCHA unattended** — see [signing in](#signing-in-without-a-person).
 - **x86-64 only.** The image installs Google Chrome from Google's `amd64` repository, so it
   won't build on an ARM host.

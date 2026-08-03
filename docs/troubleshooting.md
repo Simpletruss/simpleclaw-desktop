@@ -107,6 +107,25 @@ message rather than pass its probes and fail on the first real request.
 | A run stalls on a login page | Unattended sign-in can't pass MFA or a CAPTCHA. Open the run's live link and [take the controls](user-guide.md#taking-control-mid-run) — and set `AUTOPLAY_PUBLIC_URL`, or no link is handed out. |
 | A browser request is refused cross-origin | `AUTOPLAY_CORS_ORIGINS` takes exact origins, comma-separated. There is no wildcard. |
 
+## Pointing the app at a server
+
+*New in 0.9.* For a desktop window pointed at a remote server
+([Pointing it at a server](user-guide.md#pointing-it-at-a-server)). Press **Check** on the entry
+first — it probes the URL, then the token, then uploads, and names which one failed.
+
+| Symptom | Likely cause / fix |
+|---------|--------------------|
+| *"could not be reached. If the host is up, it may not list this app's origin"* | Almost always the **CORS** list. The server must name this app's origin: `AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173`. Settings → Remote servers shows the line with a Copy button. A browser blocks the call before the server sees it, so its own logs show nothing. |
+| **Check** passes but every page is empty | Right server, wrong organization — you're seeing a real, empty roster. Check `AUTOPLAY_ACTIVE_ORG` on that server. |
+| *"rejected the token"* | Wrong or rotated bearer. Paste the credential **only** — a value that already starts with `Bearer ` becomes `Bearer Bearer …` and 401s. The app strips it, but a proxy in front may not. |
+| *"does not accept uploaded agents"* / `501` | That server was started without `AUTOPLAY_ALLOW_AGENT_IMPORT=1` (or `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` for scenarios). It's opt-in per deployment. |
+| The upload worked but the agent won't run | The response's `supported` was false — usually a desktop- or window-scope agent on a server that has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to **Headless browser** and upload again. |
+| Uploading twice gave me two agents | By design: an upload always **creates**, so a colliding id gets a suffix rather than overwriting something possibly mid-run. Delete the old one deliberately. |
+| A scenario is there but won't run | It names agents that aren't on that server yet. The upload result lists them; upload those agents too. |
+| I can't edit anything | Remote views are read-only. Agents and history belong to the machine that owns them — switch to **This computer**, edit there, upload again. |
+| Arming a schedule answers `501` | That server isn't running the scheduler. `AUTOPLAY_SCHEDULER=on`, and only on a single instance. |
+| It reopened pointed at this computer | Deliberate — the selection isn't persisted, so you can't be left unknowingly pointed at production. |
+
 ## Still stuck?
 
 - Re-read [Getting started](getting-started.md) to confirm setup.

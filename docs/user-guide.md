@@ -6,9 +6,14 @@
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
 > labels each page with its release and can switch between versions.
 
-The complete manual for SimpleClaw 0.8 (Windows, macOS, and Linux).
+The complete manual for SimpleClaw 0.9 (Windows, macOS, and Linux).
 
-> **New in 0.8:** a saved **scenario** can span agents — each step names the agent that runs
+> **New in 0.9:** this window can be pointed at a **server** instead of at this computer. Pick
+> the machine in the title bar and the same pages show what a deployment is doing — its agents,
+> its runs, its scenarios, its schedules — and you can start work there, or send an agent to it.
+> See [Pointing it at a server](#pointing-it-at-a-server).
+
+> **From 0.8:** a saved **scenario** can span agents — each step names the agent that runs
 > it, steps hand **values** to each other, and a pass runs without a window open. See
 > [Running a whole process](#running-a-whole-process-scenarios).
 
@@ -57,13 +62,14 @@ The complete manual for SimpleClaw 0.8 (Windows, macOS, and Linux).
 8. [Where the agent works (Scope)](#where-the-agent-works-scope)
 9. [Letting another agent drive it](#letting-another-agent-drive-it)
 10. [Running it as a server](#running-it-as-a-server)
-11. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
-12. [Writing good goals](#writing-good-goals)
-13. [Action types](#action-types)
-14. [Settings reference](#settings-reference)
-15. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
-16. [Current limitations](#current-limitations)
-17. [Glossary](#glossary)
+11. [Pointing it at a server](#pointing-it-at-a-server)
+12. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
+13. [Writing good goals](#writing-good-goals)
+14. [Action types](#action-types)
+15. [Settings reference](#settings-reference)
+16. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
+17. [Current limitations](#current-limitations)
+18. [Glossary](#glossary)
 
 ---
 
@@ -115,6 +121,8 @@ your goal ─► take a screenshot ─► ask the AI model for the next action
 - **▶ Play / ↻ Re-run** — replay a finished run's frames, or run the same goal again.
 - **⏱ Scheduled** — everything waiting to start later, across every agent, with the next
   runs due. See [Running a task later](#running-a-task-later-scheduling).
+- **Server picker** — in the title bar: which machine this window is looking at, **This
+  computer** or a registered server. See [Pointing it at a server](#pointing-it-at-a-server).
 - **⚙ Settings** — model connection and behavior options.
 
 ## Running a task
@@ -589,6 +597,89 @@ Deployment, configuration, secrets, and health checks →
 first: an unattended agent reachable over a network is a different risk from the same agent
 on your desk.
 
+## Pointing it at a server
+
+*New in 0.9.*
+
+A server deployed as above used to be something you could only reach with `curl`. Now this
+window is its client too. The **server picker in the title bar** chooses which machine you're
+looking at — **This computer**, or any server you've registered — and the pages you already
+know stay exactly as they are. Only where their data comes from changes.
+
+### Registering a server
+
+Add each one once, in **⚙ Settings → Remote servers**:
+
+| Field | |
+|-------|--|
+| **Name** | What to call it in the picker — *staging*, *prod-eu*. |
+| **URL** | Its base address, no path: `https://autoplay.example.com`. |
+| **Token** | The bearer its control API expects. |
+
+**This computer** is always the first entry, and it is locked rather than editable — its
+address and token are derived, because the port moves if 8790 is taken and the token is minted
+fresh at each launch, so a stored copy would be wrong the first time either changed.
+
+They live at app level rather than on an agent, for the same reason the MCP-server registry
+does: the same machine gets pointed at from several places, and per-agent copies of a URL and a
+token drift the first time a token rotates.
+
+**Press Check** on an entry before relying on it. It probes three things in order and tells you
+which one failed — whether the host answers at all, whether it accepts the token, and whether
+it takes uploads. Those are three different people's problems (a wrong URL, a rotated
+credential, a deployment setting), and without the probe all three arrive later as the same red
+line.
+
+**One setting belongs on the server, not here.** A browser refuses a cross-origin call before
+the server ever sees it, so each server must list this app's origin:
+
+```sh
+AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173
+```
+
+The second is only needed if you also run SimpleClaw from source; listing both is harmless.
+Settings → Remote servers shows the line with a **Copy** button. Leave it unset and a server
+that passes **Check** still refuses the app — which is why it's called out here rather than
+left to be discovered.
+
+### What you can see
+
+Select a server and the window shows what that machine is doing:
+
+- **The agent roster** — what's deployed there, and whether each one can actually run.
+- **Run history** — its runs, replayable frame by frame, the same as a local one's.
+- **Scenarios** — what it has, and which agents each one needs.
+- **⏱ Scheduled** — what it has armed, and what's due next.
+
+The title bar names the machine the whole time, in a colour that doesn't blend in. That is
+deliberate: nearly everything about this feature is reversible, and a run started against the
+wrong machine is not.
+
+### What you can do
+
+- **Start a run** on the selected server, and follow it live in your own workspace — the same
+  timeline, the same frames, the same **Stop** button.
+- **Start a scenario pass** there, and follow or stop it the same way.
+- **Arm or cancel a schedule** on that server.
+- **Upload an agent** to it, from **Agents → General → Upload to a remote server** — the same
+  bundle the Export button writes, sent straight over. Scenarios upload from the scenario page.
+  → [Sending an agent to a server](server-mode.md#sending-an-agent-from-the-desktop-app)
+
+### What you can't
+
+**You can't edit anything on a remote.** An agent, its persona, its recorded demonstrations and
+its history belong to the machine that owns them; a remote view is a view of somebody else's.
+So the write channel is deliberately one-way — author here, push there — and a remote page says
+so and offers to switch you back rather than presenting fields that would silently fail.
+
+Two consequences worth knowing:
+
+- **An upload always creates.** Re-uploading an edited agent gives you a *second* agent, not an
+  update: a colliding id gets a suffix, so an upload can never overwrite something mid-run. The
+  app tells you the name it landed under.
+- **The selection isn't remembered.** Reopen the app and you're back on **This computer**. A
+  persisted "pointed at production" mode is exactly the state you'd forget you were in.
+
 ## Calling an API instead of a UI
 
 *New in 0.4.2.*
@@ -693,6 +784,7 @@ A few more appear only in the situations that call for them:
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
 | **Runs → Maximum tasks running at the same time** | How many tasks the batch command may run at once | App-wide (**Settings → General → Runs**). Default 1 = one after another. Only affects the source-only batch command, not the window or the Agent API — see [Running many tasks at once](#running-many-tasks-at-once-advanced). |
 | **REST API access** | Whether this agent may call an HTTP API | Set per agent (**Planner → MCP Servers**), not app-wide. Off by default, and needs at least one allowed host — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
+| **Remote servers** | Which servers this window can be pointed at | *New in 0.9.* App-wide (**Settings → Remote servers**): a name, URL and bearer per server, with **Check** to probe one. **This computer** is always listed and locked — see [Pointing it at a server](#pointing-it-at-a-server). |
 
 > Exact labels and defaults may vary slightly by version; values reflect
 > SimpleClaw 0.6.x.
@@ -731,7 +823,7 @@ description, the agent's persona, or a skill. Full details and worked examples:
 
 ## Current limitations
 
-SimpleClaw 0.8.x is still an early release:
+SimpleClaw 0.9.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
   browser; it can't span several at once. A [scenario](#running-a-whole-process-scenarios)
@@ -748,6 +840,9 @@ SimpleClaw 0.8.x is still an early release:
   [Running a task later](#running-a-task-later-scheduling).
 - **A server runs browser agents only** — there is no desktop in a container, so the monitor
   and window scopes are refused there. See [Server mode](server-mode.md).
+- **A remote view can't edit** — pointed at a server you can watch it, start work on it and
+  upload to it, but agents and history are authored on the machine that owns them. Uploads
+  create; they never overwrite. See [Pointing it at a server](#pointing-it-at-a-server).
 - **A saved sign-in is tied to one machine** — the headless browser's "stay signed in"
   profile belongs to the computer and user account that created it, so it doesn't travel to a
   server; a deployed agent signs in each run from injected credentials instead.

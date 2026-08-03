@@ -14,7 +14,13 @@ your business but has no way to touch your systems.
 The interface is a small **HTTP API** with a **live event stream**. In the desktop app it is
 on `127.0.0.1` only, protected by a token that changes every launch.
 
-> **New in 0.8 — a caller can hand over a whole process, not just one operation.** If the
+> **New in 0.9 — this API is also what the app itself speaks.** A desktop window
+> [pointed at a server](user-guide.md#pointing-it-at-a-server) is just another caller on these
+> endpoints, which is why the 0.9 additions below are all things a *client* needs: list the
+> runs that already happened, read and arm schedules, and upload an agent or a scenario.
+> Anything the app can do here, your own code can do the same way.
+
+> **From 0.8 — a caller can hand over a whole process, not just one operation.** If the
 > sequence is one you've already saved as a [scenario](user-guide.md#running-a-whole-process-scenarios),
 > `POST /v1/scenarios/{id}/run` runs all of its steps, across all of their agents, as one pass
 > you follow on a single stream. See [Running a whole scenario](#running-a-whole-scenario).
@@ -115,6 +121,21 @@ error — nothing here can launch the app.
 | `GET /v1/passes/{id}` | *0.8.* Poll one pass: every step's outcome, values, and judge verdict. |
 | `GET /v1/passes/{id}/events` | *0.8.* The live pass stream. |
 | `POST /v1/passes/{id}/stop` | *0.8.* Stop a pass in flight. |
+| `GET /v1/runs` | *0.9.* The runs this instance has already done — the history list, newest first. |
+| `GET /v1/schedules` | *0.9.* What it has armed, and when each is next due. |
+| `POST /v1/schedules` | *0.9.* Arm one: `agentId`, `goal`, and a `spec` (`once`, `interval`, `daily`, `weekly`). |
+| `DELETE /v1/schedules/{id}` | *0.9.* Cancel one. `404` if it's already gone. |
+| `POST /v1/agents/import` | *0.9.* Upload an agent bundle. Off unless `AUTOPLAY_ALLOW_AGENT_IMPORT=1`. |
+| `POST /v1/scenarios/import` | *0.9.* Upload scenarios. Off unless `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1`. |
+
+> **On the 0.9 routes.** The three schedule routes answer **`501`** on a server that isn't
+> running the scheduler — which is the default, because several replicas would each fire the
+> same entry; set `AUTOPLAY_SCHEDULER=on` on a single instance to use them. The two import
+> routes answer **`501`** unless their switch is set, and an import always **creates**: a
+> colliding id gets a suffix rather than overwriting an agent that may be mid-run. The response
+> carries `supported`, which is what tells you whether the thing you just uploaded can actually
+> run there — see
+> [Sending an agent from the desktop app](server-mode.md#sending-an-agent-from-the-desktop-app).
 
 > **Changed in 0.7:** `GET /v1/health` used to return the operational view; that is now
 > `GET /v1/status`. Health and readiness were split so a container platform can probe them

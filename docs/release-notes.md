@@ -10,14 +10,77 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.8.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.9.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.8 — Scenarios across agents
+## 0.9 — One app, this computer or a server
 
 *Current release.*
+
+**The desktop app and a deployed server stopped being two separate products.** 0.7 made
+SimpleClaw deployable and 0.8 made it orchestrate a process, but a deployment was still
+something you could only reach with `curl`: agents arrived by copying a folder, and watching a
+server meant reading its logs. Now the app you already use is the client for both. A
+**server picker in the title bar** chooses which machine the window is looking at — **This
+computer**, or any server you've registered — and the pages don't change, only where their
+data comes from.
+→ [Pointing it at a server](user-guide.md#pointing-it-at-a-server)
+
+**Everything a server is doing, in the window you already have.** Pointed at a server, the
+roster shows the agents deployed there and whether each one can run, **Run history** lists its
+runs and replays them frame by frame, the scenario page lists its scenarios, and **⏱ Scheduled**
+shows what it has armed. The title bar names the machine at all times, in a colour you can't
+miss — *"am I looking at my laptop or at production?"* must never be a question you have to go
+somewhere else to answer.
+
+**Start work there and watch it happen.** Launch a run or a whole scenario pass on the
+selected server and it streams into your workspace exactly like a local one — the same
+timeline, the same frames, the same **Stop**. You can arm and cancel that server's schedules
+too. What you cannot do from a remote view is **edit**: agents and their history are authored
+on the machine that owns them, so the page says so and offers to switch you back.
+
+**Send an agent to a server instead of copying folders.** **Agents → General → Upload to a
+remote server** POSTs the same bundle the Export button writes — config, attached MCP servers,
+non-built-in skills, memory — to `POST /v1/agents/import`. Scenarios upload the same way from
+the scenario page. It's the only route into a server with none of your folders mounted, and
+uploads always **create**: a colliding id gets a suffix rather than overwriting what's running.
+Both routes are **off unless asked for**, per deployment — `AUTOPLAY_ALLOW_AGENT_IMPORT=1` and
+`AUTOPLAY_ALLOW_SCENARIO_IMPORT=1`.
+→ [Sending an agent to a server](server-mode.md#sending-an-agent-from-the-desktop-app)
+
+**Register each server once.** **⚙ Settings → Remote servers** holds the name, URL and bearer
+for each one — app-level, like the MCP-server registry, because the same machine gets pointed
+at from several places and a per-agent copy of a token drifts the first time one rotates.
+**This computer** is always the first entry, derived and locked. **Check** on any entry probes
+it in three steps and names which one failed: `/v1/health` proves the URL, `/v1/capabilities`
+proves the token, and an empty POST to the import route reports whether uploads are enabled at
+all.
+
+**One build, one runtime, both modes.** The desktop entry point and the headless one already
+shared the agent loop; now they share the rest — the same startup sequence, the same
+environment configuration, the same control API, and the same web UI, which is why a server
+hands out a **run page** that looks like the app rather than a bare JSON endpoint. In a
+container, pointing `ORGANIZATIONS_DIR` at your mounted `orgs/` collapses branding and agents
+into a **single mount**, so the container sees exactly what the desktop app sees.
+
+**One thing to set on the server.** A browser blocks a cross-origin call before the server
+ever sees it, so each server has to list the app's origin in `AUTOPLAY_CORS_ORIGINS` —
+`app://renderer` for a packaged build, plus `http://localhost:5173` if you also run from
+source. Settings → Remote servers shows the exact line to copy. Without it a perfectly healthy
+server that passes **Check** still refuses the app.
+→ [Letting the app reach it](server-mode.md#letting-the-desktop-app-reach-it)
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.9.0** | The server picker, remote views of runs/scenarios/schedules, remote runs and passes, agent and scenario upload, the server registry with **Check**, and one runtime behind both modes. |
+
+---
+
+## 0.8 — Scenarios across agents
 
 **One saved process can now span several agents.** A [scenario](user-guide.md#running-a-whole-process-scenarios)
 is an ordered list of steps run as a single **pass**, and each step names **which agent runs

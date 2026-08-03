@@ -9,7 +9,11 @@
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
 
-> **New in 0.8:** a **scenario** can carry work across several agents and systems in one
+> **New in 0.9:** this app can be **pointed at a server** — which means it now holds
+> credentials for machines other than this one, and can start work on them. See
+> [Pointing it at a server](#pointing-it-at-a-server).
+
+> **From 0.8:** a **scenario** can carry work across several agents and systems in one
 > unattended pass, with values from one system typed into the next. See
 > [Processes that run themselves](#processes-that-run-themselves).
 
@@ -279,6 +283,33 @@ present and can hit `F9`. Here nobody is, so read this before deploying one.
   forbid the privileges it needs. The compensating controls are a non-root user, the origin
   seal on the agent's browser, and a scrubbed environment at browser launch — real, but not
   the same as the sandbox.
+
+## Pointing it at a server
+
+*New in 0.9.*
+
+Registering a server in **⚙ Settings → Remote servers** makes this app a client of that
+deployment: it can watch what the server is doing, start runs and scenario passes on it, arm and
+cancel its schedules, and upload agents to it. See
+[Pointing it at a server](user-guide.md#pointing-it-at-a-server) for how it works. Four things
+that follow, worth deciding before you register production:
+
+- **Your machine now holds production credentials.** Each entry's bearer token is stored in the
+  app's configuration in plain text, the same as your model API keys, readable by anything
+  running as you. A laptop that can reach staging and production is now as sensitive as those
+  servers are.
+- **Starting a remote run is a real action on a real system,** taken from a window that looks
+  identical whichever machine it's pointed at. That's why the title bar names the machine at all
+  times and in a colour that stands out — but the safeguard is attention, not a confirmation
+  dialog. Check the picker before you press Run.
+- **Uploading an agent puts new software in front of your sites.** The route is off unless the
+  server was started with `AUTOPLAY_ALLOW_AGENT_IMPORT=1`, and an upload creates rather than
+  overwrites, so it can't silently replace something mid-run. Enable it where uploads are how
+  you deploy — not everywhere.
+- **The reach is deliberately one-way and narrow.** Nothing on a remote can be edited or deleted
+  from here, the server accepts calls only from origins it names in `AUTOPLAY_CORS_ORIGINS`
+  (there is no wildcard), and a caller still can't widen an agent's scope, start URL or sign-in
+  — those stay decisions made in the agent's own configuration.
 
 ## Privacy and data handling
 
