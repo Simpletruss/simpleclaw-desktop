@@ -93,6 +93,7 @@ with a copy button: that's the page you're on when you need it.
 
 | Release | What it added |
 |---------|---------------|
+| **0.10.1** | **Sideways scrolling.** A table wider than the window keeps the rest of its columns past the right edge, and the agent now scrolls to them instead of reporting the value as absent from the system. Two things had made those columns look like they did not exist: scrolling *down* never moves them, and a frozen first column leaves the left of the screen identical afterwards — so it reads the **column headers** to tell that the view moved, and scrolls back left for a control on that side. → [Action types](user-guide.md#action-types) |
 | **0.10.0** | Remote agent editing, deleting runs on any machine, the four deployment switches removed, one shared speech configuration with desktop playback and dictation, playback on a shared run link, always-persistent browser profiles stored outside `orgs/`, and **Settings → Run servers**. |
 
 ---

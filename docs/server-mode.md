@@ -144,8 +144,8 @@ confusing error several layers from the setting that caused it.
 `simpleclaw-server-<version>-docker.tar.gz` — it's listed alongside the desktop installers.
 
 ```sh
-tar -xzf simpleclaw-server-0.10.0-docker.tar.gz
-cd simpleclaw-server-0.10.0
+tar -xzf simpleclaw-server-0.10.1-docker.tar.gz
+cd simpleclaw-server-0.10.1
 ```
 
 **2. Put your agents next to it,** in a folder called `orgs` — see
@@ -179,7 +179,7 @@ docker compose logs -f      # the first build takes a few minutes
 
 ```sh
 curl http://localhost:8790/v1/ready
-# {"ok":true,"version":"0.10.0"}
+# {"ok":true,"version":"0.10.1"}
 ```
 
 If it exited instead, the log names the reason —
@@ -570,8 +570,8 @@ If your platform wants an image in a registry rather than a build context, build
 once and push it yourself:
 
 ```sh
-docker build -t your-registry.example.com/simpleclaw-server:0.10.0 .
-docker push your-registry.example.com/simpleclaw-server:0.10.0
+docker build -t your-registry.example.com/simpleclaw-server:0.10.1 .
+docker push your-registry.example.com/simpleclaw-server:0.10.1
 ```
 
 **Storage.** Agents need a read-write filesystem the container can see. On Azure Container

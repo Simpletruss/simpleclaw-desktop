@@ -20,6 +20,7 @@ Quick fixes for the most common issues.
 | "It does nothing" | **Dry run** is probably still ON. Turn it off once you're ready for real actions. |
 | Actions happen too fast to follow | Increase the **Step delay** in Settings so each step is easier to watch and interrupt. |
 | The next screenshot shows the *old* page after a click | Raise **Nav settle** so the page has time to load before the model looks again. |
+| It reports a column or value as *missing* from a wide table | Those columns are past the table's right edge, and it reaches them by scrolling sideways (0.10.1 and later — older builds only ever scrolled up and down). If it still can't, the pane is too narrow to make progress: widen the window, or give a headless-browser agent a wider **viewport** on the Scope tab. |
 
 ## Platform-specific
 

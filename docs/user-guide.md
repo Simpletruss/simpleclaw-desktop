@@ -816,7 +816,7 @@ and SimpleClaw finds it, checks the spot, and acts, all within the one step.
 | `input` | Type into a field, locating and focusing it first if it isn't already. Clears the field, so it *replaces* rather than appends. |
 | `type` | Type into the field that is **already** focused — no locating, so it can't drift onto a neighbouring icon. |
 | `hotkey` | Press a keyboard shortcut, e.g. `ctrl c`, `enter`, `end`. |
-| `scroll` | Scroll up, down, left or right. |
+| `scroll` | Scroll up, down, **left or right**. Sideways is how a wide table is read: a grid wider than the window keeps the rest of its columns past the right edge, and scrolling *down* never brings them into view. A frozen first column stays put while the rest moves, so it goes by the **column headers** to tell the view changed, then scrolls back left to reach a control on that side. To scroll an inner panel or an open menu instead of the whole view, `hover` inside it first. |
 | `zoom_in` / `zoom_out` | Zoom the view in or out. |
 | `launch_app` | Open or activate an app **by name** — more reliable than clicking a taskbar icon. For a browser it can go straight to a URL. |
 | `read_clipboard` | Read the clipboard as text. This is how a long answer or document is captured in one step: copy it, then read it here, instead of scrolling through it. |

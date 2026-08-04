@@ -151,7 +151,7 @@ On every loop the model chooses exactly one action:
 | `drag` | Drag one element onto another — how a list gets reordered, or an item moved. |
 | `hotkey` | Press a keyboard shortcut (e.g. Ctrl+S). |
 | `type` | Type a string of text. |
-| `scroll` | Scroll the view up or down. |
+| `scroll` | Scroll the view up, down, left or right — sideways is how a wide table's off-screen columns get read. |
 | `wait` | Pause briefly to let something load. |
 | `finished` | Declare the task complete and end the run. |
 
