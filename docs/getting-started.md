@@ -167,18 +167,19 @@ Everything it needs — deployment, configuration, secrets, health checks →
 ## 9. Optional — point this app at that server
 
 *New in 0.9.* A deployment isn't something you have to poke at with `curl`. Add it once under
-**⚙ Settings → Remote servers** (a name, its URL, its token) and the **server picker in the
-title bar** switches this window between **This computer** and that server.
+**⚙ Settings → Run servers → Remote servers** (a name, its URL, its token) and the **server
+picker in the title bar** switches this window between **This computer** and that server.
 
 Pointed at it, the pages you already know show what *it* is doing — its agents, its run history,
 its scenarios, its schedules — and you can start a run or a scenario pass there and watch it
 live. Sending an agent over is **Agents → General → Upload to a remote server**, which beats
-copying folders around.
+copying folders around. From 0.10 you can also open a deployed agent's editor and correct its
+config in place, and delete one of that machine's runs.
 
-Two things to expect the first time: the server has to list this app's origin in
-`AUTOPLAY_CORS_ORIGINS` (Settings shows the line to copy), and it only accepts agents if it was
-started with `AUTOPLAY_ALLOW_AGENT_IMPORT=1`. Press **Check** on the entry and it tells you
-which of those is missing.
+One thing to expect the first time: the server has to list this app's origin in
+`AUTOPLAY_CORS_ORIGINS` (Settings shows the line to copy), or a healthy server still refuses the
+app. Press **Check** on the entry and it says what's missing — including when that executor's
+build is too old for something the app wants to do.
 
 Details → [Pointing it at a server](user-guide.md#pointing-it-at-a-server).
 

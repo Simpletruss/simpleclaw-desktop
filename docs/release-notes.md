@@ -10,14 +10,94 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.9.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.10.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.9 — One app, this computer or a server
+## 0.10 — Correct a deployment, and talk to it
 
 *Current release.*
+
+**A deployed agent is fixable from the window looking at it.** 0.9 made a server something
+this app could watch and drive; the one thing it couldn't do was *change* anything, so a
+deployed agent with a wrong persona or a moved start URL meant finding the laptop it was
+authored on. Now clicking an agent in a remote roster opens the **same detail editor** a local
+one gets, filled from that machine, and edits save over there as you type — one request per
+pause, not per keystroke. A banner names where the changes are going.
+→ [Editing a deployed agent](server-mode.md#editing-a-deployed-agent-from-the-desktop-app)
+
+**What is editable is a field; what isn't is a file or a device.** Persona, scope, start URL,
+the model endpoints, planner/executor/observer settings, REST access and voice are config, and
+config is what a server stores. Skill bodies, function folders, recorded demonstrations, the
+signed-in browser profile and that machine's monitors are not — those show a note saying what
+they are and where they live, because a form that appeared to edit them would in fact have been
+editing this computer's copies. Two things the server says up front so the form is never
+optimistic: whether it will accept edits at all (`AUTOPLAY_AGENTS_READONLY=1` still refuses
+them), and which model fields its environment pins so an edit would be stored and then ignored.
+**Secrets never travel** — keys, phone credentials and the enrolled voiceprint are blanked on
+the way out, and a blank coming back is treated as *unchanged*, never as "delete it".
+
+**Runs can be deleted on whichever machine holds them.** The trash button in **Run history**
+and the bulk **Clean up** now work over a remote view too, sending the delete to the host that
+owns the run. What still refuses: a run that hasn't finished, and a **supervised demonstration**
+unless you confirm by typing *Yes* — those are what the planner builds its plans out of, so
+losing one silently degrades every later run. Deletion covers the record, its screenshots and
+its benchmark rows, and there is no undo.
+→ [Deleting a run](server-mode.md#deleting-a-run-from-a-remote-window)
+
+**Nothing left to switch on.** Four deployment variables are **gone**, and what they gated is
+simply available: `AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`,
+`AUTOPLAY_ALLOW_RUN_DELETE` and `AUTOPLAY_SCHEDULER`. Each one turned a working button in the
+app into a `501` until somebody found the variable, and every deployment wanted them on.
+**Schedules now run in every mode** — the thing to know is that entries live in the data
+directory, so N replicas sharing one each arm the same timers; run **one** replica where
+schedules matter. The caution that remains is `AUTOPLAY_AGENTS_READONLY=1`, which is how an
+operator says *these agent files are not to be modified*.
+
+**One speech setting, three uses.** Phone calls, the wake word and dictation used to point at
+three different services on three different ports. Now the agent's **Voice** tab has **Speech
+in** (realtime transcription, the server deciding where sentences end) and **Speech out**
+(streamed text-to-speech), and both serve every path. Leave the API key blank and the model key
+is reused for the same host, so the usual case is nothing to configure. Speech out also plays
+through **this computer's speakers**, with a **Test** button beside it that speaks a phrase you
+type — the fastest way to find out a voice pack is at the wrong sample rate.
+→ [Talking to it](user-guide.md#talking-to-it-voice)
+
+**Dictate a task instead of typing it.** The new-task box has a **mic button**: click to start,
+click to stop, and the words land in the field as they're recognized, appended to whatever you
+had already typed. No wake word, no model call to decide whether you meant it — you pressed a
+button, which says it better than a keyword can.
+
+**A shared run link plays back too.** ▶ **Play** stepping through a finished run's frames was a
+desktop-only control; the run page a link opens now has it, so someone reviewing what an agent
+did doesn't need the app installed to watch it happen.
+
+**Every browser agent keeps its signed-in profile — and profiles moved out of your agent
+folders.** "Stay signed in between runs" is no longer a checkbox: almost every real target is
+behind a login, so its off-state only bought a login per run. The profile now lives in the app's
+own data directory rather than inside the agent's folder, which is what makes a **deployment on
+network storage** work: Chrome creates lock files as symlinks inside its profile, SMB shares
+like Azure Files refuse to create a symlink, and Chrome treated that as fatal — so every run of
+a signed-in agent on a mounted `orgs/` died in about 200 ms, before opening a page. Nothing is
+lost by moving it: a profile is machine-local state that another executor could never have used.
+Existing profiles are migrated on first launch.
+
+**⚙ Settings → Run servers.** The tab that was *Remote servers* now holds both kinds of machine
+on two pages — **This computer** and **Remote servers** — because it always listed both and
+naming it after one of them made the other read like a server somebody forgot to configure.
+**This computer** also shows the `Authorization` header its own control API expects, masked,
+with a copy button: that's the page you're on when you need it.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.10.0** | Remote agent editing, deleting runs on any machine, the four deployment switches removed, one shared speech configuration with desktop playback and dictation, playback on a shared run link, always-persistent browser profiles stored outside `orgs/`, and **Settings → Run servers**. |
+
+---
+
+## 0.9 — One app, this computer or a server
 
 **The desktop app and a deployed server stopped being two separate products.** 0.7 made
 SimpleClaw deployable and 0.8 made it orchestrate a process, but a deployment was still
@@ -38,16 +118,18 @@ somewhere else to answer.
 **Start work there and watch it happen.** Launch a run or a whole scenario pass on the
 selected server and it streams into your workspace exactly like a local one — the same
 timeline, the same frames, the same **Stop**. You can arm and cancel that server's schedules
-too. What you cannot do from a remote view is **edit**: agents and their history are authored
-on the machine that owns them, so the page says so and offers to switch you back.
+too. What you could not do from a remote view was **edit**: agents and their history were
+authored on the machine that owns them, so the page said so and offered to switch you back.
+*(0.10 opened one half of that — an agent's config is editable in place; its files and its
+history still are not.)*
 
 **Send an agent to a server instead of copying folders.** **Agents → General → Upload to a
 remote server** POSTs the same bundle the Export button writes — config, attached MCP servers,
 non-built-in skills, memory — to `POST /v1/agents/import`. Scenarios upload the same way from
 the scenario page. It's the only route into a server with none of your folders mounted, and
 uploads always **create**: a colliding id gets a suffix rather than overwriting what's running.
-Both routes are **off unless asked for**, per deployment — `AUTOPLAY_ALLOW_AGENT_IMPORT=1` and
-`AUTOPLAY_ALLOW_SCENARIO_IMPORT=1`.
+Both routes were **off unless asked for**, per deployment — `AUTOPLAY_ALLOW_AGENT_IMPORT=1` and
+`AUTOPLAY_ALLOW_SCENARIO_IMPORT=1`. *(0.10 removed both switches; uploads need nothing set.)*
 → [Sending an agent to a server](server-mode.md#sending-an-agent-from-the-desktop-app)
 
 **Register each server once.** **⚙ Settings → Remote servers** holds the name, URL and bearer

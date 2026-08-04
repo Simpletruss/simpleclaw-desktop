@@ -43,7 +43,7 @@ For agents whose **Scope** is a headless browser
 | "That profile is already in use" | The agent's browser profile can only be open once. Close the **Log in once** window, or stop the run, then try again. |
 | The agent is stuck on a login page | It cannot know your password. Use **Scope → 🔓 Log in once…**, sign in by hand in the window that opens, close it, and run again. |
 | Signing in bounces back to the start page | The login goes through a different host. Add it under **Scope → Also allow these origins** (e.g. your SSO domain) — outside origins are sent back by design. |
-| Signed in, but the next run is logged out | **Stay signed in between runs** is off, or the profile was cleared with **Sign out**. Also make sure the login window was closed before the run started. |
+| Signed in, but the next run is logged out | The profile was cleared with **Sign out**, or the site's session expired. Also make sure the login window was closed before the run started. (Before 0.10 a **Stay signed in between runs** checkbox could also be off; every browser agent now keeps its profile.) |
 | "No Chrome/Edge found" | This scope drives your installed Chrome (or Edge). Install one, or use a desktop/window scope instead. |
 | Small buttons get mis-clicked | Try a **smaller viewport** on the Scope tab. A higher resolution can make small targets *harder* to hit, not easier — 1280×800 is the default for that reason. |
 | Take control shows the page below 100 % | The window can't fit the viewport at 1:1, so it scales down instead of cropping (cropping would hide parts you need to click). Maximize or enlarge the window for exact 1:1. |
@@ -64,6 +64,23 @@ For tasks set to run later or on a repeat
 | A schedule fires but the run errors immediately | Usually the target app/window isn't in the state the task assumes, or two copies of SimpleClaw are open and competing for the screen. Open the run from **Run history** (it carries the **Schedule** label) to see where it stopped. |
 | I can't find a schedule I created | The sidebar's **Scheduled** page lists every one across all agents; clear the agent/type/when filters if the list looks short. A one-off disappears once it has fired. |
 
+## Voice — dictation, wake word, spoken replies
+
+*New in 0.10.* For the mic button and the agent's **Voice** tab
+([user guide](user-guide.md#talking-to-it-voice)).
+
+| Symptom | Likely cause / fix |
+|---------|--------------------|
+| The mic button flashes an error and stops | Microphone permission was denied, or another app holds the device. Allow the microphone for SimpleClaw in your OS privacy settings (**macOS:** *Privacy & Security → Microphone*), then click again. |
+| The mic opens but no words appear | **Speech in** can't be reached. Check its Base URL on the agent's Voice tab, and its API key — a blank key only works when the host is the same one your model key belongs to. |
+| The transcript is in the wrong language, or mixes badly | Leave **Language** blank for auto-detect. Pinning one language makes the other worse, which matters for mixed Chinese/English speech. |
+| Numbers, ids or names come out wrong | Turn on **Post-edit**: one short model pass per finished sentence normalizes spoken numbers and ids. It only rewrites settled text, never the words appearing as you speak. |
+| **Test** speaks, but too fast, too slow, or squeaky | The **sample rate** doesn't match what your voice pack returns — nothing in the protocol reports it, so it's a setting. Try 24000 (the default) or the rate your endpoint documents. **Speed** is separate (0.25–4). |
+| **Test** does nothing at all | **Speech out** can't be reached, or the endpoint doesn't do `response_format: pcm`. The error appears beside the button. |
+| The wake word never triggers | Use a real dictionary word — coined names often aren't recognized. Also check **Voice wake** is enabled *and* started (**Start listening**), and that you're on the machine doing the listening. |
+| It reacts to speech that wasn't meant for it | Turn on **Commands only**, which drops utterances that aren't instructions, and/or **Owner voice only** after enrolling your voice. Both cost a little latency per utterance. |
+| A window pointed at a server can't start listening | Correct — a microphone belongs to the machine doing the listening. You can edit that server's voice settings, but its listener starts there. |
+
 ## Running many tasks at once
 
 For the batch command
@@ -73,7 +90,7 @@ For the batch command
 | Symptom | Likely cause / fix |
 |---------|--------------------|
 | `npm run batch` isn't recognised | You're in an installed copy, not a source checkout. The batch command lives in the SimpleClaw source tree; the `.exe`/`.dmg`/`.AppImage` doesn't include it. |
-| I raised **Runs** but tasks still go one at a time | Three things override the number: tasks sharing an agent with **Stay signed in** on (one saved browser profile, so they queue), agents that work on your **real screen** (they'd fight over one mouse), and passing `--parallel 1`. The startup line prints the limit actually in force. |
+| I raised **Runs** but tasks still go one at a time | Three things override the number: tasks sharing one browser agent (one saved profile, so they queue), agents that work on your **real screen** (they'd fight over one mouse), and passing `--parallel 1`. The startup line prints the limit actually in force. |
 | Nothing ran and it listed problems instead | The whole list is validated first, deliberately. Fix every line it names — usually a misspelled agent, an agent still in **Dry run**, or a real-screen agent without `--allow-desktop`. |
 | A task ended with "paused for input with nobody to answer" | The agent stopped to ask a question mid-run and no one was there. Batch only suits tasks you've already watched succeed unattended; make the goal specific enough that it doesn't need to ask. |
 | One task timed out at the same number of minutes every time | That's `--timeout` doing its job. Either the goal is too big for the limit or the agent is stuck in a loop — open the run in **Run history** and read the steps before raising it. |
@@ -103,7 +120,9 @@ message rather than pass its probes and fail on the first real request.
 | Edits to `agent.json` don't take effect | Live reload is off unless `AUTOPLAY_AGENTS_WATCH_MS` is set; without it, restart. A reload also only affects the **next** run, not one already going. |
 | Agent files got rewritten or deleted | `AUTOPLAY_AGENTS_READONLY` was turned off against a real mount. Don't — migration state lives in the container, so each start looks like a first start and a writable roster pass rewrites the set. Restore from a copy. |
 | My desktop run history disappeared | Retention swept the mount. The defaults (7-day screenshots, 30-day sessions, 2 GB) apply to whatever is behind it — set all three to `0` for a folder you also use from the app. |
-| Scheduled tasks never fire | Schedules are off in server mode; several replicas would each fire the same one. `AUTOPLAY_SCHEDULER=on` if you run exactly one instance. |
+| Scheduled tasks never fire | From 0.10 schedules run in every mode and `AUTOPLAY_SCHEDULER` is gone, so check the entry itself and that the process stayed up. On an older build, that variable was required. |
+| One scheduled task ran several times | Several replicas share one data directory, so each armed the same timer. Run **one** replica where schedules matter. |
+| Chrome dies instantly with `Failed to create … SingletonLock: Permission denied` | The browser profile is on storage that refuses symlinks (Azure Files and other SMB shares). From 0.10 profiles live under `AUTOPLAY_DATA_DIR/browser-profiles`, not in the mounted `orgs/` — put *that* path on storage that allows symlinks, or leave it in the container. |
 | A run stalls on a login page | Unattended sign-in can't pass MFA or a CAPTCHA. Open the run's live link and [take the controls](user-guide.md#taking-control-mid-run) — and set `AUTOPLAY_PUBLIC_URL`, or no link is handed out. |
 | A browser request is refused cross-origin | `AUTOPLAY_CORS_ORIGINS` takes exact origins, comma-separated. There is no wildcard. |
 
@@ -115,15 +134,19 @@ first — it probes the URL, then the token, then uploads, and names which one f
 
 | Symptom | Likely cause / fix |
 |---------|--------------------|
-| *"could not be reached. If the host is up, it may not list this app's origin"* | Almost always the **CORS** list. The server must name this app's origin: `AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173`. Settings → Remote servers shows the line with a Copy button. A browser blocks the call before the server sees it, so its own logs show nothing. |
+| *"could not be reached. If the host is up, it may not list this app's origin"* | Almost always the **CORS** list. The server must name this app's origin: `AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173`. Settings → Run servers → Remote servers shows the line with a Copy button. A browser blocks the call before the server sees it, so its own logs show nothing. |
 | **Check** passes but every page is empty | Right server, wrong organization — you're seeing a real, empty roster. Check `AUTOPLAY_ACTIVE_ORG` on that server. |
 | *"rejected the token"* | Wrong or rotated bearer. Paste the credential **only** — a value that already starts with `Bearer ` becomes `Bearer Bearer …` and 401s. The app strips it, but a proxy in front may not. |
-| *"does not accept uploaded agents"* / `501` | That server was started without `AUTOPLAY_ALLOW_AGENT_IMPORT=1` (or `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` for scenarios). It's opt-in per deployment. |
+| *"does not accept uploaded agents"* / `501` | On 0.10 there is nothing to switch on, so this means that **executor is an older build** (it needed `AUTOPLAY_ALLOW_AGENT_IMPORT=1`, or `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` for scenarios). Set the variable there, or update it. |
 | The upload worked but the agent won't run | The response's `supported` was false — usually a desktop- or window-scope agent on a server that has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to **Headless browser** and upload again. |
-| Uploading twice gave me two agents | By design: an upload always **creates**, so a colliding id gets a suffix rather than overwriting something possibly mid-run. Delete the old one deliberately. |
+| Uploading twice gave me two agents | An upload **creates** unless **Overwrite** is ticked, so a colliding id gets a suffix rather than replacing something possibly mid-run. Delete the old one deliberately, or upload with Overwrite. |
 | A scenario is there but won't run | It names agents that aren't on that server yet. The upload result lists them; upload those agents too. |
-| I can't edit anything | Remote views are read-only. Agents and history belong to the machine that owns them — switch to **This computer**, edit there, upload again. |
-| Arming a schedule answers `501` | That server isn't running the scheduler. `AUTOPLAY_SCHEDULER=on`, and only on a single instance. |
+| Typing in a remote agent's editor does nothing | That deployment pinned `AUTOPLAY_AGENTS_READONLY=1`, which refuses edits with `409`; the banner names it. Unset it there, or edit locally and upload. |
+| An edit saved but the agent still uses the old value | A model field the server's environment pins (`AUTOPLAY_MODEL_*`) always wins over what's stored. The editor flags those fields — change the deployment's environment instead. |
+| Some sections of a remote agent won't edit | Skills, functions, demonstrations, the signed-in profile and that machine's monitors are files and devices over there, not config. Each says where it lives. |
+| *"cannot open an agent's config"* / *"cannot delete runs"* | That executor's **build** predates `GET /v1/agents/:id` or `DELETE /v1/runs/:id`. Update it; there is no setting for either. |
+| Deleting a run was refused | A run still in flight is refused until it's stopped, and a **supervised demonstration** needs the extra confirmation (type *Yes*) because the planner learns from it. |
+| Arming a schedule answers `501` | An older build without unconditional schedules — it needed `AUTOPLAY_SCHEDULER=on`. From 0.10 the route is always there. |
 | It reopened pointed at this computer | Deliberate — the selection isn't persisted, so you can't be left unknowingly pointed at production. |
 
 ## Still stuck?

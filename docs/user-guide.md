@@ -59,17 +59,18 @@ The complete manual for SimpleClaw 0.9 (Windows, macOS, and Linux).
 5. [Running a whole process (scenarios)](#running-a-whole-process-scenarios)
 6. [Running a task later (scheduling)](#running-a-task-later-scheduling)
 7. [Running many tasks at once (advanced)](#running-many-tasks-at-once-advanced)
-8. [Where the agent works (Scope)](#where-the-agent-works-scope)
-9. [Letting another agent drive it](#letting-another-agent-drive-it)
-10. [Running it as a server](#running-it-as-a-server)
-11. [Pointing it at a server](#pointing-it-at-a-server)
-12. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
-13. [Writing good goals](#writing-good-goals)
-14. [Action types](#action-types)
-15. [Settings reference](#settings-reference)
-16. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
-17. [Current limitations](#current-limitations)
-18. [Glossary](#glossary)
+8. [Talking to it (voice)](#talking-to-it-voice)
+9. [Where the agent works (Scope)](#where-the-agent-works-scope)
+10. [Letting another agent drive it](#letting-another-agent-drive-it)
+11. [Running it as a server](#running-it-as-a-server)
+12. [Pointing it at a server](#pointing-it-at-a-server)
+13. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
+14. [Writing good goals](#writing-good-goals)
+15. [Action types](#action-types)
+16. [Settings reference](#settings-reference)
+17. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
+18. [Current limitations](#current-limitations)
+19. [Glossary](#glossary)
 
 ---
 
@@ -111,7 +112,8 @@ your goal ─► take a screenshot ─► ask the AI model for the next action
 
 ## The interface
 
-- **Goal bar** — where you type what you want done, with **Run** and **Stop**.
+- **Goal bar** — where you type what you want done, with **Run** and **Stop**. The **🎙 mic**
+  button dictates into it instead — see [Talking to it](#talking-to-it-voice).
 - **Dry run toggle** — plan-only vs. act-for-real. On by default.
 - **Screenshot view** — the current capture, with a **marker** showing where the
   model is about to act. Hover it during a headless-browser run to
@@ -142,7 +144,8 @@ reaches the **maximum steps** limit.
 **Replaying a run.** Once a run is over, **▶ Play** steps back through its frames
 at 2 per second, so you can watch what happened without re-running anything.
 **↻ Re-run** starts the same goal again as a fresh run; the finished one stays in
-history either way.
+history either way. *New in 0.10:* the page a [run's own link](agent-api.md#a-link-a-person-can-open)
+opens has the same playback, so somebody reviewing what an agent did doesn't need the app.
 
 ### The run bar
 
@@ -417,8 +420,8 @@ the limit as far as your machine comfortably allows, not higher.
 
 Three rules apply no matter what number you set:
 
-- **Tasks that share a signed-in agent run one at a time.** An agent with **Stay signed in**
-  turned on has one saved browser profile, and a profile can only be open in one browser.
+- **Tasks that share a browser agent run one at a time.** Each such agent has one saved
+  browser profile, and a profile can only be open in one browser at a time.
   Those tasks are queued behind each other automatically; unrelated tasks keep going in
   parallel around them.
 - **Agents that work on your real screen never run in parallel.** They'd fight over one
@@ -449,6 +452,46 @@ stops the batch before task 1 opens a browser.
 > **If a task stops to ask a question, it's over.** There's nobody there to answer, so that
 > task is abandoned and its question is reported instead of the answer. Tasks you intend to
 > batch should be ones you've already watched succeed on their own.
+
+## Talking to it (voice)
+
+*Reworked in 0.10.*
+
+Typing a task is the default, and nothing here is required. But a goal is a sentence, and
+sometimes saying it is faster — especially a long one, or one you're reading off a ticket.
+Three separate things use speech, and from 0.10 they share **one configuration** on the agent's
+**Voice** tab instead of pointing at three services:
+
+| | What it does |
+|--|--|
+| **🎙 Dictation** | The mic button in the new-task box. Click to start, click again to stop. Words appear in the field as they're recognized, **appended** to whatever you'd already typed, so you can type half a sentence and speak the rest. |
+| **Voice wake (hands-free)** | Say a wake word — *"computer"* — and the sentence after it is transcribed. If a task is running the words are handed to it and the planner re-decides immediately; otherwise they start a new task. |
+| **Spoken replies** | The agent can speak through this computer's speakers, and on a phone call it's the same voice from the same endpoint. |
+
+Two fields do the configuring, and both are usually blank:
+
+- **Speech in** — the transcription endpoint. **Language** blank means auto-detect, which is
+  the right answer for mixed Chinese/English speech; pinning one language makes the other
+  worse. **Post-edit** adds one short model pass per finished sentence to repair
+  misrecognitions and normalize spoken numbers and ids.
+- **Speech out** — the text-to-speech endpoint, plus the **voice**, the **speed**, and the
+  **sample rate** it returns. **Test** speaks a phrase you type: use it before relying on any
+  of this, because a voice pack that answers at another rate sounds like a chipmunk and there
+  is nothing else that would tell you why.
+
+Leave either **API key** blank and the key for your AI model is reused, provided it's the same
+host — so if you're on the endpoint the app ships pointed at, there is nothing to fill in.
+
+**What leaves the machine, and when.** Wake-word *spotting* runs locally, so nothing is sent
+anywhere until you've actually said the word. After that — and for every click of the mic
+button — the audio goes to the Speech in endpoint to be transcribed, the same way screenshots
+already go to your model endpoint. The enrolled voiceprint for **Owner voice only** is
+biometric data and never leaves this computer; it's compared here.
+→ [Voice and audio](safety-and-privacy.md#voice-and-audio)
+
+**Hands-free listening is per machine, not per agent.** A microphone is a device on the
+computer doing the listening, so a window pointed at a server can edit that server's voice
+settings but can't start or stop its listener.
 
 ## Where the agent works (Scope)
 
@@ -482,25 +525,30 @@ good starting point.
 Most real sites need a login, and an agent cannot know your password. So the
 headless browser keeps **one profile per agent** and you sign in yourself, once:
 
-1. On the **Scope** tab, keep **Stay signed in between runs** on (the default).
-2. Press **🔓 Log in once…**. A **real, visible browser window** opens on that same
-   profile.
-3. Sign in by hand — including two-factor codes — then **close the window**.
-4. Every later run starts from that session instead of a login page.
+1. On the **Scope** tab, press **🔓 Log in once…**. A **real, visible browser
+   window** opens on that agent's own profile.
+2. Sign in by hand — including two-factor codes — then **close the window**.
+3. Every later run starts from that session instead of a login page.
 
 Your credentials never pass through SimpleClaw or any AI model: you type them into
 a normal browser window, and all the agent inherits is the session left behind.
 **Sign out** deletes the profile and the agent is logged out again.
 
-Two caveats worth knowing:
+**It is not a setting** *(changed in 0.10)*. Every browser agent keeps its profile. This used
+to be a **Stay signed in between runs** checkbox, and its off-state — a fresh, logged-out
+browser every run — only bought a login per run on sites that essentially all have one.
+
+Three caveats worth knowing:
 
 - The login window and a run **cannot use the profile at the same time** (the
   browser only allows one). Stop the run before opening the login window.
 - The profile is tied to this computer and this user account, so it can't be copied
-  to another machine.
-
-Turning the setting **off** gives a fresh, logged-out browser on every run — only
-useful for sites with no sign-in at all.
+  to another machine. It lives in SimpleClaw's own data folder — from 0.10 outside the
+  agent's folder, so that a [deployment's mounted agents](server-mode.md#bringing-your-agents)
+  can sit on network storage a Chrome profile can't.
+- A **deployed** agent signs in differently: a container's disk is disposable, so it signs in
+  on every run from credentials the platform injects →
+  [Signing in without a person](server-mode.md#signing-in-without-a-person).
 
 ### Taking control mid-run
 
@@ -608,7 +656,9 @@ know stay exactly as they are. Only where their data comes from changes.
 
 ### Registering a server
 
-Add each one once, in **⚙ Settings → Remote servers**:
+Add each one once, in **⚙ Settings → Run servers → Remote servers** *(the tab was called
+Remote servers before 0.10; it now holds two pages, because **This computer** is one of the
+machines you can point at)*:
 
 | Field | |
 |-------|--|
@@ -616,19 +666,20 @@ Add each one once, in **⚙ Settings → Remote servers**:
 | **URL** | Its base address, no path: `https://autoplay.example.com`. |
 | **Token** | The bearer its control API expects. |
 
-**This computer** is always the first entry, and it is locked rather than editable — its
-address and token are derived, because the port moves if 8790 is taken and the token is minted
-fresh at each launch, so a stored copy would be wrong the first time either changed.
+**This computer** has its own page rather than a row in that list, and nothing on it is
+editable — its address and token are derived, because the port moves if 8790 is taken and the
+token is minted fresh at each launch, so a stored copy would be wrong the first time either
+changed. It shows the `Authorization` header its own control API expects, masked, with a
+**copy** button: this is the page you're on when another program needs it.
 
 They live at app level rather than on an agent, for the same reason the MCP-server registry
 does: the same machine gets pointed at from several places, and per-agent copies of a URL and a
 token drift the first time a token rotates.
 
-**Press Check** on an entry before relying on it. It probes three things in order and tells you
-which one failed — whether the host answers at all, whether it accepts the token, and whether
-it takes uploads. Those are three different people's problems (a wrong URL, a rotated
-credential, a deployment setting), and without the probe all three arrive later as the same red
-line.
+**Press Check** on an entry before relying on it. It probes in order and tells you which step
+failed — whether the host answers at all, whether it accepts the token, and whether its build
+takes uploads. Those are different people's problems (a wrong URL, a rotated credential, an
+executor due an update), and without the probe they all arrive later as the same red line.
 
 **One setting belongs on the server, not here.** A browser refuses a cross-origin call before
 the server ever sees it, so each server must list this app's origin:
@@ -638,7 +689,7 @@ AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173
 ```
 
 The second is only needed if you also run SimpleClaw from source; listing both is harmless.
-Settings → Remote servers shows the line with a **Copy** button. Leave it unset and a server
+Settings → Run servers → Remote servers shows the line with a **Copy** button. Leave it unset and a server
 that passes **Check** still refuses the app — which is why it's called out here rather than
 left to be discovered.
 
@@ -664,19 +715,38 @@ wrong machine is not.
 - **Upload an agent** to it, from **Agents → General → Upload to a remote server** — the same
   bundle the Export button writes, sent straight over. Scenarios upload from the scenario page.
   → [Sending an agent to a server](server-mode.md#sending-an-agent-from-the-desktop-app)
+- **Fix a deployed agent's config** *(new in 0.10)*. Click it in the roster and the usual detail
+  editor opens, filled from that machine; changes save over there as you type, and a banner says
+  where they're going. → [Editing a deployed agent](server-mode.md#editing-a-deployed-agent-from-the-desktop-app)
+- **Delete one of its runs** *(new in 0.10)*, from the trash button in **Run history** or the
+  bulk **Clean up** — the delete goes to the machine that holds the run.
+  → [Deleting a run](server-mode.md#deleting-a-run-from-a-remote-window)
 
 ### What you can't
 
-**You can't edit anything on a remote.** An agent, its persona, its recorded demonstrations and
-its history belong to the machine that owns them; a remote view is a view of somebody else's.
-So the write channel is deliberately one-way — author here, push there — and a remote page says
-so and offers to switch you back rather than presenting fields that would silently fail.
+**A remote view is still a view of somebody else's machine**, and two kinds of thing stay
+behind on it.
 
-Two consequences worth knowing:
+**Files and devices, not fields.** An agent's *config* is editable over the wire; the rest of it
+isn't — skill bodies, function folders, its recorded demonstrations, its signed-in browser
+profile, and that machine's monitors and windows. Those show a note naming what they are and
+where they live, because a form that appeared to edit them would in fact have been editing this
+computer's copies. Hands-free listening is the same story: a microphone belongs to the machine
+doing the listening.
 
-- **An upload always creates.** Re-uploading an edited agent gives you a *second* agent, not an
-  update: a colliding id gets a suffix, so an upload can never overwrite something mid-run. The
-  app tells you the name it landed under.
+**What a run says.** History is the record of what happened over there, so nothing here rewrites
+a run — no relabelling, no editing a goal after the fact. Deleting a whole run *is* offered:
+deciding a record should no longer be kept isn't the same act as changing what it says.
+
+Three consequences worth knowing:
+
+- **An upload still creates.** Re-uploading an edited agent gives you a *second* agent unless
+  you leave **Overwrite** ticked: a colliding id otherwise gets a suffix, so an upload can never
+  replace something mid-run by accident. The app tells you the name it landed under.
+- **Editing is refused where an operator pinned it.** A deployment started with
+  `AUTOPLAY_AGENTS_READONLY=1` shows the real values and accepts no change, and says so with
+  that machine's own reason. Model fields its environment overrides are flagged too, so you
+  don't spend an edit on a field that will be ignored.
 - **The selection isn't remembered.** Reopen the app and you're back on **This computer**. A
   persisted "pointed at production" mode is exactly the state you'd forget you were in.
 
@@ -785,7 +855,8 @@ A few more appear only in the situations that call for them:
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
 | **Runs → Maximum tasks running at the same time** | How many tasks the batch command may run at once | App-wide (**Settings → General → Runs**). Default 1 = one after another. Only affects the source-only batch command, not the window or the Agent API — see [Running many tasks at once](#running-many-tasks-at-once-advanced). |
 | **REST API access** | Whether this agent may call an HTTP API | Set per agent (**Planner → MCP Servers**), not app-wide. Off by default, and needs at least one allowed host — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
-| **Remote servers** | Which servers this window can be pointed at | *New in 0.9.* App-wide (**Settings → Remote servers**): a name, URL and bearer per server, with **Check** to probe one. **This computer** is always listed and locked — see [Pointing it at a server](#pointing-it-at-a-server). |
+| **Run servers** | Which machines this window can be pointed at | *New in 0.9; renamed in 0.10.* App-wide (**Settings → Run servers**), on two pages: **This computer** (derived and locked, and where its own `Authorization` header is shown) and **Remote servers** — a name, URL and bearer each, with **Check** to probe one. See [Pointing it at a server](#pointing-it-at-a-server). |
+| **Speech in / Speech out** | The transcription and text-to-speech endpoints | *New in 0.10.* Set per agent (**Voice**), and shared by dictation, the wake word and phone calls. A blank API key reuses the model key for the same host — see [Talking to it](#talking-to-it-voice). |
 
 > Exact labels and defaults may vary slightly by version; values reflect
 > SimpleClaw 0.6.x.
@@ -824,7 +895,7 @@ description, the agent's persona, or a skill. Full details and worked examples:
 
 ## Current limitations
 
-SimpleClaw 0.9.x is still an early release:
+SimpleClaw 0.10.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
   browser; it can't span several at once. A [scenario](#running-a-whole-process-scenarios)
@@ -836,22 +907,23 @@ SimpleClaw 0.9.x is still an early release:
   source-only [batch command](#running-many-tasks-at-once-advanced), which starts a
   separate process per task, or several [server](#running-it-as-a-server) instances.
 - **Schedules need a process running** — they're timers inside SimpleClaw, not OS-level
-  jobs, and a missed repeat isn't made up afterwards. In server mode they're off by default,
-  because several replicas would each fire the same one. See
-  [Running a task later](#running-a-task-later-scheduling).
+  jobs, and a missed repeat isn't made up afterwards. They run in server mode too *(0.10)*, but
+  entries live with the data, so several replicas sharing it each fire the same one: run one
+  where schedules matter. See [Running a task later](#running-a-task-later-scheduling).
 - **A server runs browser agents only** — there is no desktop in a container, so the monitor
   and window scopes are refused there. See [Server mode](server-mode.md).
-- **A remote view can't edit** — pointed at a server you can watch it, start work on it and
-  upload to it, but agents and history are authored on the machine that owns them. Uploads
-  create; they never overwrite. See [Pointing it at a server](#pointing-it-at-a-server).
-- **A saved sign-in is tied to one machine** — the headless browser's "stay signed in"
-  profile belongs to the computer and user account that created it, so it doesn't travel to a
+- **A remote view edits config, not content** — pointed at a server you can watch it, start
+  work on it, upload to it, fix an agent's config *(0.10)* and delete one of its runs, but its
+  skills, functions, demonstrations and browser profile are files on that machine, and nothing
+  rewrites what a finished run says. See [Pointing it at a server](#pointing-it-at-a-server).
+- **A saved sign-in is tied to one machine** — the headless browser's profile belongs to the
+  computer and user account that created it, so it doesn't travel to a
   server; a deployed agent signs in each run from injected credentials instead.
 - **Site sealing is a backstop, not a sandbox** — navigation away from the allowed
   origins is reversed after the fact, so treat it as a guard rail rather than
   enforced isolation.
-- **A signed-in agent acts as you** — anything your account can do on that site,
-  it can do. Only turn "Stay signed in" on for sites where that's acceptable.
+- **A signed-in agent acts as you** — anything your account can do on that site, it can do, and
+  every browser agent keeps its session *(0.10)*. Only sign one in where that's acceptable.
 - **Desktop only** — Windows, macOS, and Linux; no mobile builds.
 - **Platform maturity differs** — Windows is the most exercised. macOS builds aren't
   code-signed yet (right-click → Open on first launch, and they don't self-update),

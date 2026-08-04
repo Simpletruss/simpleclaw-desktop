@@ -9,6 +9,12 @@
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
 
+> **New in 0.10:** SimpleClaw can **listen and speak** — dictation, a wake word, and spoken
+> replies — so a microphone is now one of its inputs. See [Voice and audio](#voice-and-audio).
+> A window pointed at a server can also **edit a deployed agent** and **delete its runs**, both
+> of which change or destroy something on a machine that isn't this one — see
+> [Pointing it at a server](#pointing-it-at-a-server).
+
 > **New in 0.9:** this app can be **pointed at a server** — which means it now holds
 > credentials for machines other than this one, and can start work on them. See
 > [Pointing it at a server](#pointing-it-at-a-server).
@@ -32,8 +38,8 @@ screen to an AI model. Please read this page before using it on real work.
 > model endpoint. See [Agents that call an API](#agents-that-call-an-api).
 
 > **From 0.3:** an agent can run in a **headless browser** instead of on your real
-> screen, and it can **stay signed in** to that site between runs. That removes some
-> risks and adds a different one — see
+> screen, and it **stays signed in** to that site between runs (always, from 0.10). That
+> removes some risks and adds a different one — see
 > [Headless-browser agents](#headless-browser-agents).
 
 ---
@@ -93,10 +99,11 @@ one specific way. Both are worth understanding before you point one at a real sy
 
 **What it adds**
 
-- **A signed-in agent acts as you.** If you use **Stay signed in between runs**, the
-  agent operates the site with your account's full authority — every button your user
-  can press, it can press. Only enable it for sites where that is acceptable, and
-  prefer an account with the least access that still does the job.
+- **A signed-in agent acts as you.** Once you've signed one in, it operates the site with
+  your account's full authority — every button your user can press, it can press. From
+  0.10 every browser agent keeps its session (it's no longer a checkbox), so only sign one
+  in where that is acceptable, and prefer an account with the least access that still does
+  the job. **Sign out** on the Scope tab ends it.
 - **Site sealing is a backstop, not a sandbox.** Navigation away from the allowed
   origins is *reversed after the fact* rather than blocked at the network level, and
   the browser runs on your own computer with your own network access. Treat it as a
@@ -288,10 +295,11 @@ present and can hit `F9`. Here nobody is, so read this before deploying one.
 
 *New in 0.9.*
 
-Registering a server in **⚙ Settings → Remote servers** makes this app a client of that
-deployment: it can watch what the server is doing, start runs and scenario passes on it, arm and
-cancel its schedules, and upload agents to it. See
-[Pointing it at a server](user-guide.md#pointing-it-at-a-server) for how it works. Four things
+Registering a server in **⚙ Settings → Run servers → Remote servers** makes this app a client of
+that deployment: it can watch what the server is doing, start runs and scenario passes on it, arm
+and cancel its schedules, upload agents to it, and — from 0.10 — edit a deployed agent's config
+and delete its runs. See
+[Pointing it at a server](user-guide.md#pointing-it-at-a-server) for how it works. Five things
 that follow, worth deciding before you register production:
 
 - **Your machine now holds production credentials.** Each entry's bearer token is stored in the
@@ -302,14 +310,52 @@ that follow, worth deciding before you register production:
   identical whichever machine it's pointed at. That's why the title bar names the machine at all
   times and in a colour that stands out — but the safeguard is attention, not a confirmation
   dialog. Check the picker before you press Run.
-- **Uploading an agent puts new software in front of your sites.** The route is off unless the
-  server was started with `AUTOPLAY_ALLOW_AGENT_IMPORT=1`, and an upload creates rather than
-  overwrites, so it can't silently replace something mid-run. Enable it where uploads are how
-  you deploy — not everywhere.
-- **The reach is deliberately one-way and narrow.** Nothing on a remote can be edited or deleted
-  from here, the server accepts calls only from origins it names in `AUTOPLAY_CORS_ORIGINS`
-  (there is no wildcard), and a caller still can't widen an agent's scope, start URL or sign-in
-  — those stay decisions made in the agent's own configuration.
+- **Uploading an agent puts new software in front of your sites.** From 0.10 the route needs
+  nothing switched on (`AUTOPLAY_ALLOW_AGENT_IMPORT` was removed), so the bearer for a server is
+  what decides who may do it. An upload still creates rather than overwrites unless it asks to,
+  so it can't silently replace something mid-run.
+- **Editing a deployed agent changes what runs unattended** *(0.10)*. A window pointed at a
+  server can rewrite that agent's persona, its start URL or its model endpoint, and the next
+  scheduled run uses the new version — with nobody watching. Its **secrets never travel**: keys,
+  phone credentials and the enrolled voiceprint are blanked on the way out, and a blank coming
+  back is treated as unchanged rather than as a deletion. Where an operator wants the files
+  themselves declared off limits, `AUTOPLAY_AGENTS_READONLY=1` on the server refuses edits.
+- **Deleting a run destroys evidence** *(0.10)*. The record, its screenshots and its benchmark
+  rows go, with no undo — and on a deployment, that history is often the only account of what an
+  agent did. Supervised demonstrations need an explicit confirmation (typing *Yes*) because the
+  planner learns from them; unfinished runs are refused. If the record matters for audit, keep a
+  copy somewhere the server's bearer cannot reach.
+- **The reach is still narrow.** Nothing here rewrites what a finished run *says*, an agent's
+  files (skills, functions, demonstrations, browser profile) stay on the machine that holds them,
+  the server accepts calls only from origins it names in `AUTOPLAY_CORS_ORIGINS` (there is no
+  wildcard), and a live run link carries no bearer — it authorises that one run and nothing else.
+
+## Voice and audio
+
+*New in 0.10.*
+
+Speech is optional and off until you use it, but a microphone is a different kind of input from
+a screenshot, so it's worth being precise about when audio leaves the machine.
+
+- **Nothing is captured until you ask.** Dictation opens the microphone when you click the mic
+  button and closes it when you click again. Hands-free listening only runs while **Voice wake**
+  is enabled and started.
+- **Wake-word spotting is local.** The word itself is detected on this computer, so with
+  hands-free listening on, audio is *not* streamed anywhere until you have actually said it.
+- **After that, audio goes to the endpoint you configured** — the **Speech in** address on the
+  agent's Voice tab — to be transcribed, and the text of a spoken reply goes to **Speech out** to
+  be synthesized. These are your endpoints, the same as your model endpoint; if you leave the API
+  key blank they reuse your model key on the same host, which means the same provider hears it.
+- **Post-edit sends the transcript to a model.** With it on, each finished sentence gets one
+  short model pass to repair misrecognitions — so the text (not the audio) reaches your model
+  endpoint too.
+- **A voiceprint never leaves the machine.** The recording you enroll for **Owner voice only** is
+  reduced to an embedding, stored in that agent's config on this computer, and compared here. It
+  is biometric data, and it is excluded from agent exports and from anything the control API
+  hands out.
+- **What is transcribed becomes a task.** A dictated sentence is a goal like any other, and a
+  wake-word sentence can steer a run that is already in progress. Treat an open microphone near
+  other people the way you would treat an open goal bar.
 
 ## Privacy and data handling
 
@@ -328,10 +374,13 @@ that follow, worth deciding before you register production:
   - the **model endpoint** you set, which receives the screenshots and the task;
   - any **API host you allowlist** for an agent, if you turn on REST access (0.4.2+) —
     including the request bodies that agent sends;
-  - the **site an agent works on**, for a headless-browser agent.
+  - the **site an agent works on**, for a headless-browser agent;
+  - the **speech endpoints** you set, if you use voice (0.10+) — see
+    [Voice and audio](#voice-and-audio);
+  - any **server you register** and point the window at (0.9+), which receives whatever you
+    start, upload or delete there.
 
-  Nothing else. If you have not enabled REST access, the model endpoint is the only
-  destination.
+  Nothing else. With none of those turned on, the model endpoint is the only destination.
 
 ## If something goes wrong
 

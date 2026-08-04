@@ -34,16 +34,18 @@ the environment instead of a settings screen.
 4. [Get it running](#get-it-running)
 5. [Bringing your agents](#bringing-your-agents)
 6. [Sending an agent from the desktop app](#sending-an-agent-from-the-desktop-app)
-7. [Letting the desktop app reach it](#letting-the-desktop-app-reach-it)
-8. [Configuration](#configuration)
-9. [Signing in without a person](#signing-in-without-a-person)
-10. [Authentication](#authentication)
-11. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
-12. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
-13. [Running it somewhere real](#running-it-somewhere-real)
-14. [Security](#security)
-15. [Upgrading](#upgrading)
-16. [Limits](#limits)
+7. [Editing a deployed agent from the desktop app](#editing-a-deployed-agent-from-the-desktop-app)
+8. [Deleting a run from a remote window](#deleting-a-run-from-a-remote-window)
+9. [Letting the desktop app reach it](#letting-the-desktop-app-reach-it)
+10. [Configuration](#configuration)
+11. [Signing in without a person](#signing-in-without-a-person)
+12. [Authentication](#authentication)
+13. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
+14. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
+15. [Running it somewhere real](#running-it-somewhere-real)
+16. [Security](#security)
+17. [Upgrading](#upgrading)
+18. [Limits](#limits)
 
 ---
 
@@ -98,18 +100,29 @@ them, so nothing added to the desktop app later can accidentally switch them bac
 replaces fields as they're read, and nothing is written back. That's what lets the container
 treat its own storage as disposable and keep no secret at rest.
 
-**Except for uploads, which are opt-in** *(0.9)*. `AUTOPLAY_ALLOW_AGENT_IMPORT=1` and
-`AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` open the one write that reaches in from outside — a *new*
-agent or scenario, built from the caller's bundle. They're separate switches from the read-only
-flag above, and from each other: an upload is a different write from an in-place edit, and a
-deployment that should receive agents may have no business holding scenarios. Off unless asked
-for, everywhere. See [Sending an agent from the desktop
-app](#sending-an-agent-from-the-desktop-app).
+**Except for what arrives from a desktop window, which needs nothing set** *(changed in 0.10)*.
+Three writes reach in from outside: an **uploaded** agent or scenario, an **edit** to an agent
+already here, and **deleting** a finished run's record. All three used to be off behind a
+variable (`AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`,
+`AUTOPLAY_ALLOW_RUN_DELETE`); all three are now simply available, because every deployment
+wanted them and what the flags produced in practice was a `501` where the app had a working
+button. What the read-only overlay above still protects is untouched: an upload is built
+entirely from the caller's bundle, and an edit is applied to the record **on disk** rather than
+the env-overlaid one, so neither can round-trip an injected key onto your volume. Setting
+`AUTOPLAY_AGENTS_READONLY=1` **explicitly** is the one lever left, and it refuses edits with
+`409` — that is how you say *these agent files are not to be modified*. See
+[Sending an agent](#sending-an-agent-from-the-desktop-app),
+[Editing a deployed agent](#editing-a-deployed-agent-from-the-desktop-app) and
+[Deleting a run](#deleting-a-run-from-a-remote-window).
 
-**The scheduler is off.** A [schedule](user-guide.md#running-a-task-later-scheduling) is a
-timer inside one process, and several replicas would each fire the same one. Set
-`AUTOPLAY_SCHEDULER=on` if you run exactly one instance and want it anyway — otherwise
-schedule from outside and submit over the API.
+**Schedules run here too** *(changed in 0.10)*. A
+[schedule](user-guide.md#running-a-task-later-scheduling) used to need `AUTOPLAY_SCHEDULER=on`;
+it is now on in every mode and there is no variable. The thing to know is where the entries
+live: in the data directory, so **N replicas sharing one each arm the same timers** and a 09:00
+task fires N times. Run **one** replica where schedules matter — the browser and the agent loop
+are single-flight anyway. A scheduled run is an ordinary queued job (a `runId`, followable,
+stoppable, counted against `AUTOPLAY_MAX_QUEUE`) and waits its turn rather than being skipped
+when something else is running.
 
 **Scenarios run here too** *(0.8)*. A [scenario](user-guide.md#running-a-whole-process-scenarios)
 saved in the desktop app travels with the agents you mount, and
@@ -131,8 +144,8 @@ confusing error several layers from the setting that caused it.
 `simpleclaw-server-<version>-docker.tar.gz` — it's listed alongside the desktop installers.
 
 ```sh
-tar -xzf simpleclaw-server-0.9.0-docker.tar.gz
-cd simpleclaw-server-0.9.0
+tar -xzf simpleclaw-server-0.10.0-docker.tar.gz
+cd simpleclaw-server-0.10.0
 ```
 
 **2. Put your agents next to it,** in a folder called `orgs` — see
@@ -166,7 +179,7 @@ docker compose logs -f      # the first build takes a few minutes
 
 ```sh
 curl http://localhost:8790/v1/ready
-# {"ok":true,"version":"0.9.0"}
+# {"ok":true,"version":"0.10.0"}
 ```
 
 If it exited instead, the log names the reason —
@@ -253,8 +266,8 @@ file — the agent's config plus its attached MCP servers, its non-built-in skil
 memory — straight to the server's import route. Scenarios go the same way, from the scenario
 page. It's the only route into a server that has none of your folders mounted.
 
-Register the server once in **⚙ Settings → Remote servers**; the fields and the **Check** probe
-are covered in [Pointing it at a server](user-guide.md#pointing-it-at-a-server).
+Register the server once in **⚙ Settings → Run servers → Remote servers**; the fields and the
+**Check** probe are covered in [Pointing it at a server](user-guide.md#pointing-it-at-a-server).
 
 What the button does, if you'd rather do it yourself:
 
@@ -268,24 +281,112 @@ curl -X POST https://autoplay.example.com/v1/agents/import \
 
 Four rules worth knowing before you rely on it:
 
-- **Off unless asked for.** `AUTOPLAY_ALLOW_AGENT_IMPORT=1` enables the agent route,
-  `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` the scenario one. Without them the route answers `501` —
-  which **Check** reports up front rather than letting you discover it mid-upload.
-- **An upload always creates.** A colliding id gets a suffix instead of overwriting, so
-  re-uploading an edited agent yields a *second* agent rather than replacing one that may be
-  mid-run. The app tells you the name it landed under; delete the old one deliberately.
-- **Writes are one-way.** Nothing is edited or deleted over the wire, and the server offers no
-  route that would allow it. An agent is authored on the machine that owns it and pushed.
+- **Nothing to switch on** *(changed in 0.10)*. This needed `AUTOPLAY_ALLOW_AGENT_IMPORT=1`
+  (and `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` for scenarios) until both flags were removed — an
+  executor with no agents and no way to receive one is not a deployment anybody wanted, and the
+  upload is how they arrive. **Check** still reports whether a server's *build* has the route, so
+  an executor due an update says so up front rather than mid-upload.
+- **An upload creates unless you ask otherwise.** A colliding id gets a suffix instead of
+  overwriting, so re-uploading an edited agent yields a *second* agent rather than replacing one
+  that may be mid-run. **Overwrite** (the checkbox, on by default) replaces it in place instead,
+  keeping the run history. Either way the app tells you the name it landed under.
+- **Ownership is one-way; correction is not** *(0.10)*. There is still no route that lists or
+  deletes agents, and the desktop that authored one overwrites the lot on its next upload — but
+  a window pointed at this machine can open a deployed agent's editor and fix its config in
+  place. → [Editing a deployed agent](#editing-a-deployed-agent-from-the-desktop-app)
 - **`supported` in the response is the thing to read.** It answers *can this server actually
   run what you just sent* — a desktop-scope agent uploads fine and then can't run, because a
   container has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to
   **Headless browser** first. A scenario upload likewise names any agents it needs that aren't
   there yet.
 
-An executor started with imports enabled is allowed to boot with **no agents at all** — that's
-its normal first state, and refusing would be a deadlock, since the only way to put an agent in
-is the route that needs the server running. Everywhere else an empty roster is still a startup
-failure, because there it means the mount or `AUTOPLAY_ACTIVE_ORG` is wrong.
+An executor is allowed to boot with **no agents at all** — that's its normal first state, and
+refusing would be a deadlock, since the only way to put an agent in is the route that needs the
+server running. A roster that *has* agents and none of them runnable here does still fail at
+startup: something is mounted and nothing in it can run, which means the mount or
+`AUTOPLAY_ACTIVE_ORG` is wrong.
+
+## Editing a deployed agent from the desktop app
+
+*New in 0.10.*
+
+Point the title bar at a server, open **Agents**, and clicking one now opens the **same detail
+editor** a local agent gets, filled from that machine. Changes save over there as you type — one
+coalesced request per pause, not one per keystroke — and a banner says where they are going and
+that the next upload from the owning computer overwrites them.
+
+Why this exists: a deployed agent whose persona is wrong, or whose start URL moved, was
+previously fixed by finding the laptop it was authored on and re-uploading. Ownership doesn't
+move — the desktop still authors agents — but *correcting* one shouldn't require an archaeology
+expedition.
+
+**What is editable is the config**, which is what a server stores: persona, scope and start URL,
+the model endpoints, planner/executor/observer/chronos settings, REST access, voice. **What is
+not** is everything that is a file or a device over there rather than a field — skill bodies,
+function folders, the lessons list, the signed-in browser profile, that machine's monitors and
+open windows. Those show a note naming what they are and where they live, because a form that
+appeared to edit them would in fact have been editing this computer's copies.
+
+Two things the executor tells the window before anyone types, so the form is never optimistic:
+
+- **Whether it will store a change at all.** `AUTOPLAY_AGENTS_READONLY=1`, set *explicitly*, is
+  refused with `409`; the fields still show their real values, and the banner carries the
+  executor's own reason and names the variable. Server mode's own default read-only behaviour is
+  a different thing and does **not** refuse edits — it exists to keep the model-key overlay out
+  of `agent.json`, which a patch of the on-disk record can't do anyway.
+- **Which model fields its environment pins.** `AUTOPLAY_MODEL_*` wins over anything stored, so
+  an edit to one would be kept and then ignored. The banner says so rather than leaving somebody
+  to conclude the save failed.
+
+**Secrets don't travel.** API keys, phone credentials, the REST bridge's per-host header values
+and the enrolled voiceprint are blanked on the way out. A patch is a **partial**, so a field the
+window never touched is never sent — and a blank that *is* sent back is treated as **unchanged**,
+never as a deletion. That matters because an editor section saves by sending the object it was
+given: ticking an Observer checkbox arrives carrying a blank API key beside it, and taken
+literally that would unset a working credential with nothing to say so until the next run failed
+to authenticate. To **clear** a secret, upload the agent with credentials included.
+
+```sh
+curl -X PATCH https://autoplay.example.com/v1/agents/work-order-bot \
+  -H "Authorization: Bearer $AUTOPLAY_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"persona":"Close work orders; never reopen one."}'
+# 200 {"agent":{…},"editable":true,"envPinned":["baseUrl","apiKey","model"]}
+```
+
+`GET /v1/agents/:id` is the read behind the editor: one agent's whole config, secrets blanked,
+plus `editable` and `envPinned`. Neither route lists or deletes agents — there is still no
+`GET /v1/agents` and no `DELETE`.
+
+## Deleting a run from a remote window
+
+*New in 0.10.*
+
+Reading a deployment's history and being unable to curate it isn't a policy, it's a gap: the
+person watching a deployed agent is usually the only one who will ever decide a run is finished
+with. The trash button in **Run history** and the bulk **Clean up** now send that decision to
+whichever machine holds the run (`DELETE /v1/runs/:id`), and it is the only route on the control
+API that destroys anything.
+
+It needs nothing set — `AUTOPLAY_ALLOW_RUN_DELETE` briefly existed and was removed, since a flag
+whose off-state greyed out the button on every deployment wasn't worth keeping. What refuses:
+
+- **A run that hasn't finished** — `409`. Deleting the record from under a live loop would leave
+  it writing steps into a session that no longer exists. Stop it first.
+- **A supervised demonstration** — `409` unless `?force=1`, which is what typing *Yes* in the
+  desktop dialog means. The planner builds its plans out of those, so losing one silently
+  degrades every later run in a way nothing points back to this call. A bulk clean-up never
+  sends it.
+- **A live link** — `401`. A run-scoped token doesn't reach this route at all. Someone watching a
+  run going wrong may end it (`/stop`); erasing the record of what happened is not supervision.
+- **A caller who couldn't read it** — `404`, under `AUTOPLAY_RUN_OWNERSHIP`.
+
+Deletion covers the session record, its screenshots and its rows in any benchmark report, and
+there is **no undo**. On a deployment whose history is the audit trail, the thing to control is
+who holds the bearer — which is what admits a caller to every other route here too.
+
+Where a *build* is too old to have the route, the button stays on screen and goes disabled with
+that as its tooltip, rather than disappearing or offering something that would `404`.
 
 ## Letting the desktop app reach it
 
@@ -303,7 +404,7 @@ AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173
 `app://renderer` is the packaged app — a real, stable origin your deployment can allow, which
 is why the app is served over a registered scheme instead of `file://`. The second entry is
 only needed for a build run from source (`npm run dev`); listing both is harmless, and
-Settings → Remote servers shows the line with a **Copy** button.
+Settings → Run servers → Remote servers shows the line with a **Copy** button.
 
 There is **no wildcard**, deliberately: this is a list of exactly which origins may drive
 software with your agents' authority.
@@ -315,8 +416,7 @@ variables. Nothing set here is written back to disk.
 
 | Group | Variables |
 |-------|-----------|
-| **Mode** | `AUTOPLAY_DATA_DIR`, `ORGANIZATIONS_DIR`, `AUTOPLAY_ACTIVE_ORG`, `AUTOPLAY_AGENTS_READONLY`, `AUTOPLAY_AGENTS_WATCH_MS`, `AUTOPLAY_SCHEDULER` |
-| **Uploads** *(0.9)* | `AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT` — both off by default; see [above](#sending-an-agent-from-the-desktop-app) |
+| **Mode** | `AUTOPLAY_DATA_DIR`, `ORGANIZATIONS_DIR`, `AUTOPLAY_ACTIVE_ORG`, `AUTOPLAY_AGENTS_READONLY`, `AUTOPLAY_AGENTS_WATCH_MS` |
 | **HTTP** | `AUTOPLAY_HTTP_HOST` (server default `0.0.0.0`), `AUTOPLAY_HTTP_PORT` (8790), `AUTOPLAY_PUBLIC_URL`, `AUTOPLAY_CORS_ORIGINS`, `AUTOPLAY_MAX_QUEUE`, `AUTOPLAY_RUN_TTL_MIN`, `AUTOPLAY_PAUSE_TIMEOUT_MS` |
 | **Auth** | `AUTOPLAY_AUTH_MODE` (`static`\|`jwt`), `AUTOPLAY_API_TOKEN`, `AUTOPLAY_JWT_PUBLIC_KEY`, `AUTOPLAY_JWT_ISSUER`, `AUTOPLAY_JWT_AUDIENCE`, `AUTOPLAY_JWT_ALGS`, `AUTOPLAY_JWT_LEEWAY_S`, `AUTOPLAY_JWT_ORG_CLAIM`, `AUTOPLAY_RUN_OWNERSHIP` |
 | **Model** | `AUTOPLAY_MODEL_{PROVIDER,BASE_URL,API_KEY,MODEL}`, plus `AUTOPLAY_SYSTEM_MODEL_*` and `AUTOPLAY_DETECTOR_MODEL_*`, which fall back to it field by field |
@@ -324,6 +424,13 @@ variables. Nothing set here is written back to disk.
 | **Credentials** | `AUTOPLAY_SECRET_<NAME>` — see [below](#signing-in-without-a-person) |
 | **Retention** | `AUTOPLAY_HISTORY_IMAGE_DAYS` (7), `AUTOPLAY_HISTORY_DAYS` (30), `AUTOPLAY_HISTORY_MAX_MB` (2048) |
 | **Storage** | `AUTOPLAY_STORE` (`file`\|`mongo`), `AUTOPLAY_MONGO_URI`, `AUTOPLAY_MONGO_DB`, `AUTOPLAY_FUNCTION_CACHE_DIR` |
+
+> **Four variables were removed in 0.10** and need no replacement:
+> `AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`, `AUTOPLAY_ALLOW_RUN_DELETE`
+> and `AUTOPLAY_SCHEDULER`. Uploads, agent edits, run deletion and schedules are unconditional;
+> setting one of these now does nothing. The caution moved to
+> `AUTOPLAY_AGENTS_READONLY=1`, which refuses agent edits — see
+> [What changes in server mode](#what-changes-in-server-mode).
 
 Three rules apply across all of them:
 
@@ -347,19 +454,32 @@ to empty local storage that would pass its readiness probe and serve an empty ag
 ## Signing in without a person
 
 A container's storage is disposable and a Chrome profile is bound to the machine that made
-it, so the desktop's ["log in once"](user-guide.md#staying-signed-in) persistent profile
-isn't available. An agent signs in on **every run** instead, from credentials the platform
+it, so the desktop's ["log in once"](user-guide.md#staying-signed-in) profile isn't something a
+deployment can rely on. An agent signs in on **every run** instead, from credentials the platform
 injects. In the agent's scope:
 
 ```jsonc
 "browser": {
   "startUrl": "https://app.example.com",
-  "persistProfile": false,
   "credentials": [
     { "name": "Example admin", "usernameSecret": "EXAMPLE_USER", "passwordSecret": "EXAMPLE_PASSWORD" }
   ]
 }
 ```
+
+> **`persistProfile` is gone** *(0.10)*. It used to appear here as `false`; the field was removed
+> and every browser agent has a profile directory. Nothing changes for a deployment — the
+> container's disk is still disposable, so the profile is empty on each new container and the
+> credentials below are still how it signs in. An old `agent.json` that carries the field is
+> simply ignored.
+>
+> Where the profile now **lives** does matter if your agents are on a network mount: it moved out
+> of the agent's folder into the app's own data directory. Chrome creates its lock files as
+> symlinks inside a profile, SMB shares such as Azure Files refuse to create a symlink at all,
+> and Chrome treats that as fatal — so a mounted `orgs/` on that storage used to kill every run
+> of a signed-in agent in about 200 ms, before it opened a page. If you want the profile on a
+> volume that survives the container, mount `AUTOPLAY_DATA_DIR` on storage that allows symlinks;
+> a profile is machine-local state either way.
 
 Only the **names** are stored in the agent. The values come from
 `AUTOPLAY_SECRET_EXAMPLE_USER` / `AUTOPLAY_SECRET_EXAMPLE_PASSWORD` (or their `_FILE` form)
@@ -450,8 +570,8 @@ If your platform wants an image in a registry rather than a build context, build
 once and push it yourself:
 
 ```sh
-docker build -t your-registry.example.com/simpleclaw-server:0.9.0 .
-docker push your-registry.example.com/simpleclaw-server:0.9.0
+docker build -t your-registry.example.com/simpleclaw-server:0.10.0 .
+docker push your-registry.example.com/simpleclaw-server:0.10.0
 ```
 
 **Storage.** Agents need a read-write filesystem the container can see. On Azure Container
@@ -489,15 +609,22 @@ agents' authority**, reachable by whatever can reach the port.
   Those stay decisions made in the agent's configuration.
 - **Runs are unattended by definition.** Nobody sees a step go wrong in real time. Every run
   is still recorded and replayable — check them.
-- **An upload route is a write; treat it as one** *(0.9)*. Turning on
-  `AUTOPLAY_ALLOW_AGENT_IMPORT` lets any authenticated caller add an agent to the roster. It's
-  bounded — an upload creates rather than overwrites, and an uploaded agent still can't be
-  edited over the wire — but it does mean the bearer on that server is now a credential that
-  can put *new* software in front of your sites. Enable it where uploads are how you deploy,
-  not everywhere.
+- **The bearer is the whole boundary, and it now reaches further** *(0.10)*. With the upload,
+  edit and delete switches removed, an authenticated caller can add an agent to the roster,
+  change an existing agent's config, and delete a finished run's record — as well as start runs,
+  which it always could. Read that as one grant, not four: a token that can `POST /v1/runs`
+  already drives that machine's browser against real systems, which is a larger power than
+  editing a persona. What it means practically is that the token deserves the care a production
+  credential gets, and that `AUTOPLAY_AGENTS_READONLY=1` is available where an operator wants
+  the agent files themselves declared off limits.
+- **Deleting a run is irreversible, and history is often the audit trail** *(0.10)*. The record,
+  its screenshots and its benchmark rows go, with no undo. Supervised demonstrations need an
+  explicit `?force=1` and unfinished runs are refused, but nothing else stands in the way — so
+  if the evidence of what an agent did matters, keep it somewhere the bearer can't reach as well.
 - **A registered server's token sits in the app's config** *(0.9)*, in plain text, the same as
   your model API keys. Anyone with your user account on that machine can read it, so treat the
-  desktop app as a place production credentials are kept.
+  desktop app as a place production credentials are kept — and note that from 0.10 that token
+  also edits agents and deletes runs on the server.
 - **Live links are run-scoped.** A link handed out for takeover authorises that one run: its
   frames, its recorded steps, driving it, and ending it. It doesn't carry your bearer token
   and can't reach another run. Anyone holding it can drive that browser, so treat it as

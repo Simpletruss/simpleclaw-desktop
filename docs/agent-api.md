@@ -125,17 +125,27 @@ error — nothing here can launch the app.
 | `GET /v1/schedules` | *0.9.* What it has armed, and when each is next due. |
 | `POST /v1/schedules` | *0.9.* Arm one: `agentId`, `goal`, and a `spec` (`once`, `interval`, `daily`, `weekly`). |
 | `DELETE /v1/schedules/{id}` | *0.9.* Cancel one. `404` if it's already gone. |
-| `POST /v1/agents/import` | *0.9.* Upload an agent bundle. Off unless `AUTOPLAY_ALLOW_AGENT_IMPORT=1`. |
-| `POST /v1/scenarios/import` | *0.9.* Upload scenarios. Off unless `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1`. |
+| `POST /v1/agents/import` | *0.9.* Upload an agent bundle. Creates by default; `?overwrite=1` replaces one already under that id, keeping its run history. |
+| `POST /v1/scenarios/import` | *0.9.* Upload scenarios. The reply lists any agents a step names that aren't there (`gaps`). |
+| `GET /v1/agents/{id}` | *0.10.* One agent's whole config, for a window opening its editor. Secrets blanked; `editable` says whether an edit would be stored, `envPinned` names the model fields the environment overrides. |
+| `PATCH /v1/agents/{id}` | *0.10.* Change fields on an agent already here — a partial, so anything not sent is untouched. `409` when `AUTOPLAY_AGENTS_READONLY` is set explicitly; `400` for `id`/`organization`, which travel by upload. |
+| `DELETE /v1/runs/{id}` | *0.10.* Delete a finished run's record — steps, frames, benchmark rows. `409` while it's still going, and `409` for a supervised demonstration unless `?force=1`. |
 
-> **On the 0.9 routes.** The three schedule routes answer **`501`** on a server that isn't
-> running the scheduler — which is the default, because several replicas would each fire the
-> same entry; set `AUTOPLAY_SCHEDULER=on` on a single instance to use them. The two import
-> routes answer **`501`** unless their switch is set, and an import always **creates**: a
-> colliding id gets a suffix rather than overwriting an agent that may be mid-run. The response
-> carries `supported`, which is what tells you whether the thing you just uploaded can actually
-> run there — see
+> **On the 0.9 routes.** An import always **creates** unless it asks to overwrite: a colliding
+> id gets a suffix rather than replacing an agent that may be mid-run. The response carries
+> `supported`, which is what tells you whether the thing you just uploaded can actually run
+> there — see
 > [Sending an agent from the desktop app](server-mode.md#sending-an-agent-from-the-desktop-app).
+
+> **Changed in 0.10 — four switches removed.** `AUTOPLAY_ALLOW_AGENT_IMPORT`,
+> `AUTOPLAY_ALLOW_SCENARIO_IMPORT`, `AUTOPLAY_ALLOW_RUN_DELETE` and `AUTOPLAY_SCHEDULER` are
+> gone, and the routes they gated are unconditional: the import routes, `DELETE /v1/runs/{id}`
+> and the three schedule routes no longer answer `501` on a deployment that "wasn't configured
+> for it". A `404` from one of the 0.10 routes on a server that has agents almost always means
+> that **executor predates the route** rather than that the id is wrong. Two refusals stay:
+> `AUTOPLAY_AGENTS_READONLY=1` (set explicitly) refuses `PATCH` with `409`, and deleting a
+> supervised demonstration needs `?force=1`. And schedules being on everywhere means **one
+> replica** where they matter — N replicas over one data directory each fire the same entry.
 
 > **Changed in 0.7:** `GET /v1/health` used to return the operational view; that is now
 > `GET /v1/status`. Health and readiness were split so a container platform can probe them
@@ -152,13 +162,14 @@ error — nothing here can launch the app.
 ```json
 {
   "organization": "acme",
+  "schedules": true,
+  "runDelete": true,
   "agents": [
     {
       "id": "billing-portal",
       "name": "Billing portal",
       "system": "https://billing.example.com/",
       "scopeMode": "browser",
-      "persistProfile": true,
       "operations": [{ "operation": "download an invoice PDF", "sessionId": "…" }]
     }
   ]
@@ -169,6 +180,12 @@ error — nothing here can launch the app.
 actually been demonstrated doing. Route on those. `persona` is prose written for the AI
 model; it goes stale, the other two don't. An operation that appears nowhere has not been
 taught on this machine, and a task needing it will probably fail.
+
+`schedules` and `runDelete` are always `true` from 0.10 — they're **build** signals, not
+settings. They used to report whether a deployment had opted in; now that there is nothing to opt
+into, what's left is *does this executor have those routes at all*, which a client can't
+otherwise ask. An older executor omits them, and a caller reading them as absent knows its
+`POST /v1/schedules` or `DELETE /v1/runs/{id}` would `404`.
 
 **`POST /v1/runs`** takes the goal and, optionally, what you already know:
 

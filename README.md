@@ -37,15 +37,28 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.9 — one app, this computer or a server.** The desktop app and a deployed server
+**New in 0.10 — fix a deployment where it runs, and talk to it.** Clicking an agent on a remote
+server now opens the **same editor** a local one gets: correct its persona or its start URL in
+place, without going back to the laptop that authored it. Its secrets stay on that machine, and
+a deployment can still declare its agent files off limits. Runs can be **deleted** wherever they
+live — with a second confirmation for the supervised demonstrations the planner learns from. Four
+deployment switches are **gone** (`AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`,
+`AUTOPLAY_ALLOW_RUN_DELETE`, `AUTOPLAY_SCHEDULER`): uploads, deletes and schedules just work, and
+schedules now run in server mode too. And SimpleClaw **listens and speaks** — a mic button
+dictates a task, a wake word steers a run in flight, and the agent can answer through your
+speakers, all from one pair of speech endpoints. See
+[Talking to it](docs/user-guide.md#talking-to-it-voice) and
+[Release notes](docs/release-notes.md).
+
+**From 0.9 — one app, this computer or a server.** The desktop app and a deployed server
 stopped being two separate things. A **server picker in the title bar** chooses which machine
 the window is looking at — **This computer**, or any server you've registered under
-**⚙ Settings → Remote servers** — and the pages don't change, only where their data comes from.
+**⚙ Settings → Run servers** — and the pages don't change, only where their data comes from.
 Pointed at a deployment you see its agents, its run history, its scenarios and its schedules;
 you can start a run or a whole scenario pass there and watch it live; and you can **send an
 agent to it** from **Agents → General → Upload to a remote server** instead of copying folders
-around. Remote views are read-only by design — agents are authored on the machine that owns
-them and pushed, and an upload always creates rather than overwriting. Underneath, both modes
+around. Agents are still authored on the machine that owns them and pushed — an upload creates
+rather than overwriting unless you ask it to. Underneath, both modes
 are now one build and one runtime: the same startup, the same configuration, the same API, the
 same web UI. See [Pointing it at a server](docs/user-guide.md#pointing-it-at-a-server).
 
