@@ -1,6 +1,6 @@
 # Safety & privacy
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/safety-and-privacy.html)
@@ -138,6 +138,15 @@ your mouse left the panel.
 an HTTP API directly, instead of opening the site and reading values off the screen. It
 is configured per agent, on that agent's page under **Planner → MCP Servers**.
 
+**From 0.11, prefer saved requests.** An agent can be pointed at collections in
+[Web APIs](web-apis.md) and call those requests **by name**, supplying only the variables each
+one declares. The safety difference is the whole point: the ad-hoc tool hands the model a URL
+field, and the model fills it in after reading a screen full of text nobody at your
+organization wrote. A saved request has no destination to steer — the worst an injected
+instruction achieves is calling something you already sanctioned, with different values.
+Everything below still applies underneath it, because *what may be called* and *where we may
+go* are different questions and neither answers the other.
+
 It is per agent on purpose. Which system an agent may reach — and whose credentials it
 carries — belongs to that agent's job. A scheduling agent and a billing agent reach
 different systems, and neither should be holding the other's token.
@@ -168,6 +177,33 @@ are therefore about limiting the damage such an instruction could do:
 - Leave **writes off** unless the agent's job genuinely is to change data.
 - Remember the token is **stored unencrypted** with the agent, the same as your model API
   key (see [Privacy and data handling](#privacy-and-data-handling)).
+
+## Credentials in an API workspace
+
+*New in 0.11.* A [Web APIs](web-apis.md) workspace is a folder of plain files, usually a git
+repository shared with colleagues — so the question that governs its design is what must never
+end up in it.
+
+- **A file holds the name of a credential, never the value.** `{{secret:STAGING_TOKEN}}` is
+  what gets committed; the value is looked up when the request is sent.
+- **Values live outside the repository.** Either in the environment
+  (`AUTOPLAY_SECRET_STAGING_TOKEN`, or `…_FILE` pointing at a mounted file — how a container
+  or CI job supplies one) or in this machine's OS-encrypted credential store, in the app's own
+  data folder. The environment wins, so an operator can override a laptop's saved copy without
+  editing anything. If the OS has no credential store, saving **fails** and names the variable
+  to set instead — there is no cleartext fallback.
+- **Every commit is scanned first, and a finding refuses it.** Known token shapes,
+  credential-looking fields holding a literal, and high-entropy strings. It is not a setting
+  and cannot be switched off: a push cannot be undone, and rotating the credential is the only
+  remedy — if anyone notices.
+- **An imported Postman export is archived with its credentials stripped**, and says so in the
+  file. Exports carry tokens in the clear; keeping one verbatim would defeat everything above.
+- **A copied code snippet reads the credential from the environment** rather than embedding
+  it, so the snippet you paste into a ticket is not a leak.
+- **Requests are sent to whatever host they name** — that is the tool's job, and a person
+  pressing **Send** is the authority for it. The host allowlist exists for the *agent* path,
+  where a model chose to make the call. Point a workspace at production deliberately, and use
+  `--read-only` when a CI run only needs to look.
 
 ## Processes that run themselves
 

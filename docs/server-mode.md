@@ -1,6 +1,6 @@
 # SimpleClaw — Server mode
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/server-mode.html)
@@ -200,6 +200,13 @@ curl -X POST http://localhost:8790/v1/runs \
 `POST /v1/runs` returns a `runId` immediately — it does not wait for the run. Follow it on
 `GET /v1/runs/{id}/events` or poll `GET /v1/runs/{id}`. The full interface is the
 [Agent API](agent-api.md).
+
+*From 0.11*, a script that just wants the answer can add `?wait=<seconds>`: the response is
+held until the run finishes (`200`) or the bound expires (`202`, same `runId`), and
+`GET /v1/runs/{id}/wait?timeout=<seconds>` keeps waiting on one already going. Keep the bound
+under the idle timeout of whatever proxy or ingress sits in front of the container — 120
+seconds is the ceiling here for that reason — and note that giving up on a wait never stops
+the run. → [Waiting for the answer, in one call](agent-api.md#waiting-for-the-answer-in-one-call)
 
 ## Bringing your agents
 

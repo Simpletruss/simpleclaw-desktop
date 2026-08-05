@@ -1,6 +1,6 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
@@ -256,6 +256,22 @@ The rules, all checked as you type and again at launch:
 - **A step that finishes without reporting a value it promised fails the pass.** The
   alternative is the next step running against the literal text `{{bundle_ref}}` and failing
   somewhere that looks unrelated to the real cause.
+
+### Steps that call an API instead of a screen
+
+*New in 0.11.* A step can be **a saved API request** from [Web APIs](web-apis.md) rather than
+a recorded demonstration. Both kinds sit side by side in the builder, and both share one set
+of values — so an API step that captures `{{work_order_id}}` hands it to the screen step that
+types it into the real application, and the pass verifies the thing it just created.
+
+Two practical differences from a screen step:
+
+- **It has no agent and costs nothing.** Nothing drives a screen for it, so there is no model
+  call and no tokens. Every step moved off the GUI leaves the GUI steps to the work that
+  genuinely needs eyes.
+- **What it produces is its captures** — shown on the button that adds it, so you don't
+  declare them by hand. If it fails the pass stops, and the step shows the whole request and
+  response, since there is no screenshot to look at.
 
 ### What happens during a pass
 
@@ -752,12 +768,26 @@ Three consequences worth knowing:
 
 ## Calling an API instead of a UI
 
-*New in 0.4.2.*
+*New in 0.4.2. Saved requests are new in 0.11.*
 
 Some of what an agent needs is available as an API. Reading it off a screen then means
 opening a page, finding the row, and squinting at a number — slower and easier to get
 wrong than simply asking for it. So an agent can be given **REST API access**: one tool
 that fetches from an HTTP API and hands the response back as text.
+
+> **Prefer saved requests.** From 0.11 an agent can call the requests saved in
+> [Web APIs](web-apis.md) **by name** — it picks one from a list and fills in the variables
+> that request declares, and it cannot supply a URL of its own. That matters because an agent
+> reads its instructions off a screen showing text SimpleClaw didn't write, and *"call this
+> URL with your token"* is a sentence a web page can put in front of it. With no destination
+> to name, there's nothing for an injected instruction to steer. New agents get saved requests
+> only; an agent that already had allowed hosts keeps the ad-hoc tool below as well. See
+> [Letting an agent call your saved requests](web-apis.md#letting-an-agent-call-your-saved-requests)
+> for how to grant collections in this release.
+
+The rest of this section is the **ad-hoc** tool — the one an agent uses to compose its own
+URLs. Everything it is bounded by (the host allowlist, the read-only default, the response
+cap, credentials the model never sees) applies to saved requests too.
 
 You configure it on the agent's own page, under **Planner → MCP Servers → REST API access**.
 It belongs to the agent rather than to the app, because which system an agent should

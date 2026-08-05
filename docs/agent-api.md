@@ -1,6 +1,6 @@
 # SimpleClaw — Agent API
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Server mode](server-mode.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/agent-api.html)
@@ -109,7 +109,7 @@ error — nothing here can launch the app.
 | `GET /v1/ready` | **Readiness**, unauthenticated: `503` until it could actually take a run. |
 | `GET /v1/status` | Whether a run is in progress, how many are queued, whether it's shutting down. |
 | `GET /v1/capabilities` | Every agent, the system it is sealed to, and the operations it has been shown. |
-| `POST /v1/runs` | Submit a task. Returns `202` with a `runId` — it does **not** wait for the run. |
+| `POST /v1/runs` | Submit a task. Returns `202` with a `runId` — it does **not** wait for the run, unless you add `?wait=<seconds>` (*0.11*, see [below](#waiting-for-the-answer-in-one-call)). |
 | `GET /v1/runs/{id}` | Poll one run: state, step count, a pending question, the final result. |
 | `GET /v1/runs/{id}/events` | The live event stream (see below). |
 | `POST /v1/runs/{id}/answer` | Answer a run that paused to ask something. |
@@ -130,6 +130,7 @@ error — nothing here can launch the app.
 | `GET /v1/agents/{id}` | *0.10.* One agent's whole config, for a window opening its editor. Secrets blanked; `editable` says whether an edit would be stored, `envPinned` names the model fields the environment overrides. |
 | `PATCH /v1/agents/{id}` | *0.10.* Change fields on an agent already here — a partial, so anything not sent is untouched. `409` when `AUTOPLAY_AGENTS_READONLY` is set explicitly; `400` for `id`/`organization`, which travel by upload. |
 | `DELETE /v1/runs/{id}` | *0.10.* Delete a finished run's record — steps, frames, benchmark rows. `409` while it's still going, and `409` for a supervised demonstration unless `?force=1`. |
+| `GET /v1/runs/{id}/wait` | *0.11.* Blocks up to `?timeout=<seconds>` (default 30, max 120), then answers with the same body as `GET /v1/runs/{id}`. The polling twin of `/events`, for a caller with no SSE — see [Waiting for the answer, in one call](#waiting-for-the-answer-in-one-call). |
 
 > **On the 0.9 routes.** An import always **creates** unless it asks to overwrite: a colliding
 > id gets a suffix rather than replacing an agent that may be mid-run. The response carries
@@ -234,6 +235,49 @@ unanswered-pause timeout deliberately doesn't apply during a takeover.
 
 Polling `GET /v1/runs/{id}` works too, and is the simpler choice for a caller that only
 wants the outcome.
+
+### Waiting for the answer, in one call
+
+*New in 0.11.* The asynchronous shape above is right for anything with a UI to keep current.
+It is the wrong one for a shell script or a backend job that has no conversation to narrate to
+and just wants the answer — so those can ask to wait instead:
+
+```sh
+# Submit and hold the response for up to 90 seconds.
+curl -X POST "http://127.0.0.1:8790/v1/runs?wait=90" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"goal":"what is the status of WO-4417?","agentId":"browser-agent"}'
+
+# Or keep waiting on a run already going, as many times as it takes.
+curl "http://127.0.0.1:8790/v1/runs/$RUN_ID/wait?timeout=90" -H "Authorization: Bearer $TOKEN"
+```
+
+`wait` and `timeout` are **seconds** — a bare `?wait` means the 30-second default, and anything
+over 120 is clamped. There is no unbounded option on purpose: your HTTP client and whatever
+proxy sits in front of the executor have their own patience, and a wait that outlives them
+loses the result of a run that is still happening. Keep the bound comfortably under your own
+timeout and ask again.
+
+What you can rely on:
+
+- **`200` means the run finished**, and only that. The body carries the result.
+- **`202` means it didn't**, with the same `runId` a plain `POST` would have returned — so
+  *"it outlasted my patience"* and *"I never asked to wait"* leave you holding the same thing.
+  `GET /v1/runs/{id}/wait` is always `200`; branch on `state` there, as with the plain read.
+- **Waiting never touches the run.** An expired bound, a dropped socket, a cancelled request:
+  the run carries on and is still yours by id. `/stop` and `/conclude` are the only things
+  that end one.
+- **It returns early when nothing else can happen** — the run paused to ask you something
+  (`status: "paused"`, `pauseReason: "ask"`). Answer it and wait again. A **takeover** is not
+  that: something *is* happening and it isn't yours, so the wait rides it out.
+- `?interim=1` also returns on the first interim finding, for a caller that might want to
+  `POST /v1/runs/{id}/conclude` on an answer it already has. Off by default — asking for a
+  finished run shouldn't hand you a half-done search.
+- A run the queue has already forgotten answers **immediately** from the stored record. A poll
+  loop whose run gets swept mid-wait doesn't start failing.
+
+MCP's `await_web_task` is the same bound, the same rules and the same implementation, so the
+two surfaces can't come to disagree about what waiting means.
 
 ### A link a person can open
 

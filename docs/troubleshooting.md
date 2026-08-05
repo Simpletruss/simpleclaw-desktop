@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/troubleshooting.html)
@@ -149,6 +149,22 @@ first — it probes the URL, then the token, then uploads, and names which one f
 | Deleting a run was refused | A run still in flight is refused until it's stopped, and a **supervised demonstration** needs the extra confirmation (type *Yes*) because the planner learns from it. |
 | Arming a schedule answers `501` | An older build without unconditional schedules — it needed `AUTOPLAY_SCHEDULER=on`. From 0.10 the route is always there. |
 | It reopened pointed at this computer | Deliberate — the selection isn't persisted, so you can't be left unknowingly pointed at production. |
+
+## Web APIs (0.11 and later)
+
+| Symptom | Likely cause / fix |
+|---------|--------------------|
+| **Send** is refused and no status code is shown | Nothing left the machine: a variable with no value, or a `{{secret:…}}` this machine can't resolve. The message names it. |
+| *"cannot save the value safely"* when typing a token | This machine has no OS credential store (a Linux box without libsecret, typically). Set `AUTOPLAY_SECRET_<NAME>` in the environment instead — the message gives the exact name. |
+| **Save** is refused because of a credential | The pre-commit scan found one, and it cannot be switched off. Replace the literal with `{{secret:NAME}}` and save the value; if it genuinely isn't a credential, allowlist its fingerprint in `apiclient.json`. |
+| **Share** is rejected | Somebody pushed first. **Get changes**, resolve anything conflicting, then **Share** again — that's the normal loop, not a failure. |
+| A private repository won't clone or push | It needs a token, which is asked for at the moment an operation needs one and stored with OS encryption. |
+| `npm run apitest` exits `2` having sent nothing | A selector matched nothing, the named environment doesn't exist, or the workspace has no requests. All three refuse on purpose — a green zero-step run is worse than a red one. |
+| `{{something}}` arrived at the server with the braces still in it | It isn't a reference the resolver recognises (a `.` in the name, for example). Those are painted differently from real references as you type. |
+| An imported request 401s where Postman didn't | Postman substitutes its stored value; here the token is a `{{secret:…}}` name that needs a value on this machine. The import report lists every credential it extracted. |
+| The agent ignores its saved requests | Check the collection is granted to that agent, and that the request is `GET`/`HEAD` unless writes are enabled — a write isn't even listed to a read-only agent. |
+
+More detail on all of these: [Web APIs](web-apis.md#troubleshooting).
 
 ## Still stuck?
 

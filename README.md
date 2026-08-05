@@ -37,7 +37,22 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.10 — fix a deployment where it runs, and talk to it.** Clicking an agent on a remote
+**New in 0.11 — a Postman alternative, built in.** The new **Web APIs** page is a full HTTP
+client: collections, requests, environments, authentication, plus **Capture** and **Tests** in
+place of Postman's script sandbox. Import your Postman collections in one step and read a
+report of every lossy decision the conversion made. **It costs nothing to use** — sending a
+request never touches an AI model, so it never spends a token — and **a workspace is a git
+repository**, so sharing it with your team is Save / Get changes / Share, with conflicts asked
+as *"which version of this request?"* rather than as a text merge. Credentials can't be
+committed: files carry `{{secret:NAME}}`, values live in the OS credential store or the
+environment, and a pre-commit scan refuses anything that slips through. In CI it's
+`git clone && npm run apitest` — plain Node, no display. A **scenario step** can now be a
+saved request, so one pass can create a record over the API and then have an agent check the
+real screen shows it; and an agent can call your **saved requests by name** instead of
+composing a URL a web page could steer. See [Web APIs](docs/web-apis.md) and
+[Release notes](docs/release-notes.md).
+
+**From 0.10 — fix a deployment where it runs, and talk to it.** Clicking an agent on a remote
 server now opens the **same editor** a local one gets: correct its persona or its start URL in
 place, without going back to the laptop that authored it. Its secrets stay on that machine, and
 a deployment can still declare its agent files off limits. Runs can be **deleted** wherever they
@@ -183,6 +198,7 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 | [🌐 Website](https://simpletruss.github.io/simpleclaw-desktop/) | The polished overview and hub. |
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
 | [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, scenarios, and tips. |
+| [🔗 Web APIs](docs/web-apis.md) | The built-in API client: import from Postman, send and test requests, share the workspace as a git repo (0.11 and later). |
 | [🔌 Agent API](docs/agent-api.md) | Let another AI agent hand work to SimpleClaw (0.4 and later). |
 | [🐳 Server mode](docs/server-mode.md) | Run it headless in a container — deployment, configuration, secrets (0.7 and later). |
 | [🧩 Custom functions](docs/functions.md) | Give the agent a function of your own, no rebuild (0.5 and later). |

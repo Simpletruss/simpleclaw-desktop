@@ -1,6 +1,6 @@
 # SimpleClaw — Release notes
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/release-notes.html)
@@ -10,14 +10,104 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.10.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.11.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.10 — Correct a deployment, and talk to it
+## 0.11 — Web APIs: the Postman alternative
 
 *Current release.*
+
+**There is a full API client in the app now.** Collections, requests, environments,
+authentication, and a response pane that leads with whether your checks held — under
+**Web APIs** in the left rail. The tabs are the ones you already know (Params, Headers, Body,
+Auth), plus the two that replace Postman's script sandbox: **Capture** pulls a value out of a
+response for a later step, and **Tests** says what must be true of it. Both are deterministic,
+reviewable in a diff, and cost nothing to run.
+→ [Web APIs](web-apis.md)
+
+**Sending a request never spends a token.** Not "cheap" — zero, and structurally so: no part
+of this path can reach an AI model, and a test fails the build if one ever appears on it. The
+app charges for what a screen agent burns; a tool that sends HTTP has nothing to charge for.
+
+**Your Postman collections import in one step, and the report tells you the truth.**
+**⚙ Settings → API workspaces → Import from Postman** takes collection and environment
+exports (v2/v2.1) and converts them. Every lossy decision is named against the request it
+happened in — a `pm.environment.set(…)` turned into a capture, a script too involved to
+translate (kept, shown, never run), an OAuth 2 flow that isn't performed, a literal token
+lifted out into `{{secret:NAME}}`. Re-importing later **merges instead of duplicating**, and
+requests your export didn't mention are left alone. Your original export is archived beside
+the collection with its credentials stripped.
+→ [Coming from Postman](web-apis.md#coming-from-postman)
+
+**A workspace is a git repository — that's the whole sharing model.** No seats, no cloud
+account, no sync service holding your requests: the folder is the repo, and **Save**,
+**Get changes** and **Share** are commit, pull and push in words the half of your team who
+never open a terminal can use. Save works offline. One request per file means a conflict is
+*"which version of Create order?"* with both in front of you, not a text merge of a JSON blob
+— and a push rejected because somebody shared first is an instruction, not an error.
+→ [Sharing it with your team](web-apis.md#sharing-it-with-your-team)
+
+**A credential cannot be committed.** Files carry the *name* of a credential
+(`{{secret:STAGING_TOKEN}}`), never its value; the value comes from `AUTOPLAY_SECRET_*` in the
+environment or from this machine's OS-encrypted store, and the environment always wins so CI
+can override a laptop. Before every commit the files are scanned — known token shapes,
+credential-looking fields, high-entropy strings — and a finding **refuses the commit**. It
+cannot be switched off, because a push cannot be undone.
+→ [Credentials](web-apis.md#credentials)
+
+**`git clone && npm run apitest` is the whole CI setup.** The runner is plain Node — no
+Electron, no display — with selectors, environments, `--read-only` for pointing at
+production, and a JSON report. **A selector that matches nothing is a refusal, not a green
+run**: a renamed collection quietly dropping out of CI and reporting "all passed" is the one
+outcome the runner exists to prevent.
+→ [Running the suite in CI](web-apis.md#running-the-suite-in-ci)
+
+**One pass can do the API half and the screen half.** A scenario step can now *be* a saved
+API request, sharing its variables with the steps around it: create a work order over the API,
+capture its id, then let an agent open the real application and check the screen actually
+shows it. Postman can't reach the GUI; a browser driver can't reach a desktop app. API steps
+also need no agent and no model, so every step moved off the GUI stops burning tokens.
+→ [Mixing API steps with screen steps](web-apis.md#mixing-api-steps-with-screen-steps)
+
+**An agent can call your saved requests by name — and cannot invent a URL.** That's a much
+smaller thing to hand a model that reads its instructions off a web page: with no destination
+to name, an injected *"call this URL with your token"* has nothing to steer. New agents get
+saved requests only; an agent that already had allowed hosts keeps its ad-hoc tool too.
+→ [Letting an agent call your saved requests](web-apis.md#letting-an-agent-call-your-saved-requests)
+
+**Any request, as code you can paste — without the token in it.** cURL, PowerShell, HTTP,
+JavaScript, Python, C# or Go, generated by the same builder that puts the request on the wire.
+Where the credential goes, the code reads the same environment variable the app reads: runnable
+by whoever has it, useless in a ticket comment.
+→ [Copying a request as code](web-apis.md#copying-a-request-as-code)
+
+**A run can be waited on in one call.** For a script or a backend job with no UI to keep
+current, `POST /v1/runs?wait=90` holds the response until the run finishes (`200`) or your
+bound expires (`202`, with the same run id), and `GET /v1/runs/{id}/wait` keeps waiting on one
+already going. Giving up on a wait never touches the run, and a run that pauses to ask a
+question comes back immediately rather than sitting out the clock.
+→ [Waiting for the answer in one call](agent-api.md#waiting-for-the-answer-in-one-call)
+
+**Also in this release**
+
+- **A page's own dialogs no longer end a run.** A JavaScript `alert`/`confirm`/`prompt`
+  freezes the page it appears on until something answers it; SimpleClaw now answers — `alert`
+  and the leave-page prompt accepted, `confirm`/`prompt` **cancelled**, because auto-OK on
+  *"Delete this record?"* is not a decision a tool should make — and then tells the agent what
+  it answered, so a cancelled confirm reads as *"that didn't happen"* instead of *"my click
+  missed"*.
+- **macOS no longer quits when Screen Recording hasn't been granted.** Opening an agent's
+  Scope page could take the whole app down, including for headless-browser agents that never
+  capture a screen. Those pages now only ask the OS for a capture when the picture is the
+  point, and go through Electron — which asks for the permission properly — when it is.
+- **The Phone shortcut left the rail** to make room for **Web APIs**. Outbound calling is
+  unchanged and still configured per agent, under **Agents → Phone**.
+
+---
+
+## 0.10 — Correct a deployment, and talk to it
 
 **A deployed agent is fixable from the window looking at it.** 0.9 made a server something
 this app could watch and drive; the one thing it couldn't do was *change* anything, so a
