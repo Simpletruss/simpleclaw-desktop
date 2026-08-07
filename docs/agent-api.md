@@ -410,11 +410,14 @@ never taught here, so the fix is to record a demonstration, not to try again.
 
 - **Submitting is not waiting.** `POST /v1/runs` returns immediately. A run takes minutes
   and can stop to ask a question, so a blocking call would just hang.
-- **One at a time, queued.** SimpleClaw performs a single run at a time — the agent loop
-  and its browser are single-flight. Extra work waits, and `queuePosition` tells the caller
-  where it is rather than implying parallelism. This is **per instance**: a
-  [server deployment](server-mode.md) scales by running more replicas, so a caller that
-  needs throughput should spread work across executors rather than expect one to parallelise.
+- **Queued, and only as parallel as the executor is** *(changed in 0.11.2)*. The desktop app
+  performs one run at a time. A
+  [server deployment](server-mode.md#running-more-than-one-run-at-a-time) performs
+  `AUTOPLAY_MAX_CONCURRENT_RUNS` — **two by default**, each in its own process with its own
+  browser — but **never two for the same agent**, since one agent means one browser profile
+  and Chrome locks it. Anything beyond that waits, and `queuePosition` tells the caller where
+  it is. A caller that needs throughput should spread work across *agents* first, and across
+  executors after that, rather than expect one agent to parallelise.
 - **Questions come back to the caller.** If the agent can't determine something (*"which of
   these two clients do you mean?"*), the run pauses and the question is on the stream.
   Answer it, or stop the run. A pause nobody answers within ten minutes is stopped.

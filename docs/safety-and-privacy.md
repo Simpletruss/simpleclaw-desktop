@@ -9,6 +9,11 @@
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
 
+> **New in 0.11.4:** a [Web APIs](web-apis.md) request can carry **Postman scripts, and they
+> run** — JavaScript that arrives in your workspace over git, or in somebody's collection
+> export. That is code from other people executing on your machine, so read
+> [Scripts in an API workspace](#scripts-in-an-api-workspace) before you pull one.
+
 > **New in 0.10:** SimpleClaw can **listen and speak** — dictation, a wake word, and spoken
 > replies — so a microphone is now one of its inputs. See [Voice and audio](#voice-and-audio).
 > A window pointed at a server can also **edit a deployed agent** and **delete its runs**, both
@@ -204,6 +209,47 @@ end up in it.
   pressing **Send** is the authority for it. The host allowlist exists for the *agent* path,
   where a model chose to make the call. Point a workspace at production deliberately, and use
   `--read-only` when a CI run only needs to look.
+
+## Scripts in an API workspace
+
+*New in 0.11.4.* A request can carry Postman **pre-request** and **post-response** scripts,
+and SimpleClaw runs them. This is the one place in the product where code someone else wrote
+executes on your computer without you having written or approved it line by line, so it gets
+its own section.
+
+**What is actually true**
+
+- **The code arrives the way the requests do.** A workspace is a git repository. **Get
+  changes** can bring in a script a colleague wrote — or one that came along in a collection
+  they exported from somewhere else and imported here. An import from a Postman export brings
+  scripts in verbatim.
+- **The isolation is against accidents, not intent.** Scripts run in a fresh JavaScript
+  context with no `require`, no `process`, no `fetch`, no timers, no access to the app's own
+  code, and a 2-second limit. That stops a runaway loop and a typo. It does **not** stop a
+  script that is trying to get out: reaching the host from inside Node's `vm` is a documented
+  property of the runtime. A hostile script gets what a Node program run as you gets.
+- **So the defence is that you read it.** Scripts are stored as ordinary `.js` files beside
+  their request, precisely so they show up in a diff with syntax highlighting and can be
+  commented on line by line. Review them like the rest of the pull request.
+- **Nothing about a script reaches a model or spends a token.** The API path has no model on
+  it, and a test fails the build if one ever appears.
+- **A script is not run where a human didn't ask for it.** An **agent** calling a saved
+  request never runs its scripts — otherwise granting a collection to an agent would be
+  granting arbitrary code execution to something that reads its instructions off web pages.
+  The CI runner (`npm run apitest`) doesn't run them either. Scripts run on **Send** and in a
+  **scenario step** you built.
+- **`pm.environment.set` writes into a committed file.** The value lands in the selected
+  environment, so a token a script stores there will be caught by the pre-commit secret scan
+  — which is the scan working, not failing. Use `{{secret:NAME}}` for anything real.
+
+**Habits that fit the design**
+
+- Skim the `.js` files in any workspace you clone, and in any collection you import, before
+  you press Send. `git log -p -- '*.js'` over a workspace is a short read.
+- Prefer **Capture** and **Tests** where they'll do. They're deterministic, they run in CI and
+  under an agent, and there is no code to trust.
+- Treat "who can push to this repository" as the access control it is. It always governed
+  which URLs the suite would call; now it governs which code your machine will run.
 
 ## Processes that run themselves
 

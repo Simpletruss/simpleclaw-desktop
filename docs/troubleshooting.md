@@ -124,7 +124,12 @@ message rather than pass its probes and fail on the first real request.
 | Scheduled tasks never fire | From 0.10 schedules run in every mode and `AUTOPLAY_SCHEDULER` is gone, so check the entry itself and that the process stayed up. On an older build, that variable was required. |
 | One scheduled task ran several times | Several replicas share one data directory, so each armed the same timer. Run **one** replica where schedules matter. |
 | Chrome dies instantly with `Failed to create … SingletonLock: Permission denied` | The browser profile is on storage that refuses symlinks (Azure Files and other SMB shares). From 0.10 profiles live under `AUTOPLAY_DATA_DIR/browser-profiles`, not in the mounted `orgs/` — put *that* path on storage that allows symlinks, or leave it in the container. |
-| A run stalls on a login page | Unattended sign-in can't pass MFA or a CAPTCHA. Open the run's live link and [take the controls](user-guide.md#taking-control-mid-run) — and set `AUTOPLAY_PUBLIC_URL`, or no link is handed out. |
+| A run stalls on a login page | Unattended sign-in can't pass MFA or a CAPTCHA. Either sign the agent in once over a [sign-in link](server-mode.md#signing-in-by-hand-on-a-machine-with-no-screen) (*0.11.2*), or open the run's live link and [take the controls](user-guide.md#taking-control-mid-run). Both need `AUTOPLAY_PUBLIC_URL` set, or no link is handed out. |
+| A sign-in link answers `409` | Chrome locks a profile directory, so a link can't open while a run is using that agent's browser or a warm one still holds it. Wait for the run, or stop it. |
+| The agent was signed in and came back signed out | Before *0.11.3* a retiring worker killed its browser instead of closing it, and the profile never got the session written. Update. Otherwise: the profile lives under `AUTOPLAY_DATA_DIR`, so a new revision or replica move loses it, and the site may expire the session on its own schedule. |
+| Two tasks for one agent still run one after the other | By design — an agent has one browser profile and Chrome locks it. Concurrency (`AUTOPLAY_MAX_CONCURRENT_RUNS`, default 2) is across *different* agents. |
+| Runs die together with no obvious error | An OOM kill takes down every run on the instance. Budget ~0.9 GB per concurrent slot, or set `AUTOPLAY_MAX_CONCURRENT_RUNS=1`. |
+| **Take control** does nothing on a busy server | Fixed in *0.11.3* — a run executing in a worker process couldn't be taken over, and a takeover pause was reported as a manual one, so the watchdog could stop the run out from under you. Update. |
 | A browser request is refused cross-origin | `AUTOPLAY_CORS_ORIGINS` takes exact origins, comma-separated. There is no wildcard. |
 
 ## Pointing the app at a server
@@ -163,6 +168,10 @@ first — it probes the URL, then the token, then uploads, and names which one f
 | `{{something}}` arrived at the server with the braces still in it | It isn't a reference the resolver recognises (a `.` in the name, for example). Those are painted differently from real references as you type. |
 | An imported request 401s where Postman didn't | Postman substitutes its stored value; here the token is a `{{secret:…}}` name that needs a value on this machine. The import report lists every credential it extracted. |
 | The agent ignores its saved requests | Check the collection is granted to that agent, and that the request is `GET`/`HEAD` unless writes are enabled — a write isn't even listed to a read-only agent. |
+| A request passes on **Send** but fails in `npm run apitest` or under an agent | Its [script](web-apis.md#scripts) doesn't run on those paths (*0.11.4*) — CI and agents grade the committed document. Move what the script does into a **Capture** or a **Test**. |
+| A script set a variable and nothing kept it | `pm.environment.set` writes to the **selected** environment; with none selected there's nowhere to put it, and the response pane says so. |
+| A script "ran past its time limit" / `pm.x is not a function` | Scripts get 2 seconds and run synchronously, and `pm.expect` implements the matchers real tests use rather than all of chai — an absent one names itself instead of answering wrongly. |
+| A `GET` sent no body | Deliberate: `fetch` rejects a body on `GET`/`HEAD` before a packet leaves. `DELETE` and `OPTIONS` bodies *are* sent (*0.11.4*); the copied code snippet still renders a `GET` body faithfully for tools that can send one. |
 
 More detail on all of these: [Web APIs](web-apis.md#troubleshooting).
 

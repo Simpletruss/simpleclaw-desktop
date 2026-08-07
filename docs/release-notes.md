@@ -22,9 +22,11 @@ at the top of any page to read an older release's docs instead.
 **There is a full API client in the app now.** Collections, requests, environments,
 authentication, and a response pane that leads with whether your checks held — under
 **Web APIs** in the left rail. The tabs are the ones you already know (Params, Headers, Body,
-Auth), plus the two that replace Postman's script sandbox: **Capture** pulls a value out of a
-response for a later step, and **Tests** says what must be true of it. Both are deterministic,
-reviewable in a diff, and cost nothing to run.
+Auth), plus the two that do without Postman's script sandbox: **Capture** pulls a value out of
+a response for a later step, and **Tests** says what must be true of it. Both are
+deterministic, reviewable in a diff, and cost nothing to run. *(From 0.11.4 there is a
+**Scripts** tab as well, for the exports those two can't express — see the point releases
+below.)*
 → [Web APIs](web-apis.md)
 
 **Sending a request never spends a token.** Not "cheap" — zero, and structurally so: no part
@@ -35,7 +37,7 @@ app charges for what a screen agent burns; a tool that sends HTTP has nothing to
 **⚙ Settings → API workspaces → Import from Postman** takes collection and environment
 exports (v2/v2.1) and converts them. Every lossy decision is named against the request it
 happened in — a `pm.environment.set(…)` turned into a capture, a script too involved to
-translate (kept, shown, never run), an OAuth 2 flow that isn't performed, a literal token
+translate (kept and shown; from 0.11.4 it also runs), an OAuth 2 flow that isn't performed, a literal token
 lifted out into `{{secret:NAME}}`. Re-importing later **merges instead of duplicating**, and
 requests your export didn't mention are left alone. Your original export is archived beside
 the collection with its credentials stripped.
@@ -104,6 +106,19 @@ question comes back immediately rather than sitting out the clock.
   point, and go through Electron — which asks for the permission properly — when it is.
 - **The Phone shortcut left the rail** to make room for **Web APIs**. Outbound calling is
   unchanged and still configured per agent, under **Agents → Phone**.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.11.4** | **Postman scripts run.** The **Scripts** tab holds a request's pre-request and post-response JavaScript, and Send executes it: `pm.environment.set`, `pm.test`, `pm.expect`, `pm.request` rewriting, `console`. Captures and Tests are still the better answer where they fit — deterministic, reviewable, and the only version that runs in CI or under an agent — but a real Postman export carries scripts no fixed vocabulary covers, and porting forty by hand is a migration nobody finishes. **Two things to know:** this is somebody's code running on your machine, arriving over git (scripts are stored as `.js` files beside their request precisely so a reviewer can read them), and the isolation is against accidents, not intent. Scripts do **not** run in `npm run apitest` or when an agent calls a saved request. → [Scripts](web-apis.md#scripts) · [Safety](safety-and-privacy.md#scripts-in-an-api-workspace) |
+| | **Send sends what's on screen.** Unsaved edits go on the wire, so changing a header and pressing Send no longer sends the old one. Save stays a separate press, because a save is a file write somebody sees in `git status`. |
+| | **Several collections stay open at once** in the tree, and which ones survives a restart — expanding one no longer folds the others, and a folder holding only other folders is finally visible. Collections load as you open them, so thirty of them still draw instantly. |
+| | **The JSON body box behaves like an editor**: it closes braces, brackets and quotes, steps over a closer you type, takes both halves on Backspace, and keeps your indent on Enter — which also means `{{` opens the variable completion in the same two keystrokes. **A body on `DELETE` or `OPTIONS`** is now sent, since those are ordinary in real APIs; `GET`/`HEAD` still can't carry one and say so. Dropdowns no longer get clipped by the pane they're in. |
+| **0.11.3** | Fixes for runs executing in a worker process: **taking control** works on one, a takeover pause is no longer misreported as a manual pause (so the watchdog could stop the run), a worker can read the MCP registry, a retiring worker **closes** its browser rather than killing it — which used to lose the sign-in it was holding — and a sign-in done any way but the *log in once* link now survives the next browser close. Remote runs show their screenshots again. |
+| **0.11.2** | **Two runs at a time per executor** (`AUTOPLAY_MAX_CONCURRENT_RUNS`, default 2), each in its own process with its own browser, and **never two for the same agent** — one agent means one Chrome profile, and Chrome locks it. **Signing in to a deployed agent from anywhere:** `POST /v1/agents/:id/login-session` mints a 10-minute link that puts you in the executor's own browser, MFA and all, and closing it rewrites session cookies to a 30-day expiry so *log in once* means once rather than once per run. Also: the to-do list shows in the web view. → [Concurrency](server-mode.md#running-more-than-one-run-at-a-time) · [Signing in by hand](server-mode.md#signing-in-by-hand-on-a-machine-with-no-screen) |
+| **0.11.1** | Date and time inputs are read and filled correctly, and remote control works in server mode. |
+| **0.11.0** | The Web APIs client, Postman import, API steps in scenarios, saved requests as an agent tool, the `apitest` CI runner, code snippets, and `?wait=` on the runs API. |
 
 ---
 

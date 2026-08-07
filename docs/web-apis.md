@@ -32,16 +32,17 @@ Three things make it different from the tool you're replacing:
 1. [Opening a workspace](#opening-a-workspace)
 2. [Coming from Postman](#coming-from-postman)
 3. [Sending a request](#sending-a-request)
-4. [Variables and environments](#variables-and-environments)
-5. [Credentials](#credentials)
-6. [Sharing it with your team](#sharing-it-with-your-team)
-7. [Running the suite in CI](#running-the-suite-in-ci)
-8. [Copying a request as code](#copying-a-request-as-code)
-9. [Mixing API steps with screen steps](#mixing-api-steps-with-screen-steps)
-10. [Letting an agent call your saved requests](#letting-an-agent-call-your-saved-requests)
-11. [What it deliberately doesn't do](#what-it-deliberately-doesnt-do)
-12. [What's on disk](#whats-on-disk)
-13. [Troubleshooting](#troubleshooting)
+4. [Scripts](#scripts)
+5. [Variables and environments](#variables-and-environments)
+6. [Credentials](#credentials)
+7. [Sharing it with your team](#sharing-it-with-your-team)
+8. [Running the suite in CI](#running-the-suite-in-ci)
+9. [Copying a request as code](#copying-a-request-as-code)
+10. [Mixing API steps with screen steps](#mixing-api-steps-with-screen-steps)
+11. [Letting an agent call your saved requests](#letting-an-agent-call-your-saved-requests)
+12. [What it deliberately doesn't do](#what-it-deliberately-doesnt-do)
+13. [What's on disk](#whats-on-disk)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -65,6 +66,13 @@ it from the list (the folder is untouched) or delete the folder outright.
 environment you have selected, and any credential you saved, are yours alone — pushing
 "I am pointed at Production" onto everyone who pulls would be a bad day for somebody.
 
+**In the tree, several collections can stand open at once** *(from 0.11.4)*, and which ones
+you left open survives a restart. Expanding one no longer folds the others, so comparing two
+requests that live in different collections is a matter of looking at them. A collection is
+read from disk the first time you open it rather than up front, which is why a workspace with
+thirty of them still draws instantly. A folder holding nothing but other folders shows up
+too, so its name and description can be reached.
+
 ## Coming from Postman
 
 **⚙ Settings → API workspaces → Import from Postman → Choose files…** takes a Collection
@@ -79,8 +87,8 @@ ever authenticating. Every lossy decision is listed, named by the request it hap
 | Note | What it means |
 |--|--|
 | **Credential extracted** | A literal token in the export became `{{secret:NAME}}`. Supply the value once (see [Credentials](#credentials)) and it is never in a file again. |
-| **Script translated** | A `pm.test(…)` or `pm.environment.set(…)` line became a real test or capture. No sandbox needed. |
-| **Script needs a human** | A script too involved to translate. Kept verbatim, shown on the request, and **never executed**. |
+| **Script translated** | A `pm.test(…)` or `pm.environment.set(…)` line also became a real test or capture — the version a reviewer can read in a diff. The script itself comes across whole and still runs. |
+| **Script needs a human** | Lines with no capture/assertion equivalent. *From 0.11.4* the script is kept **and runs as JavaScript** — [read it before you trust it](#scripts), and port what you can. |
 | **Path variable** | `:orderId` became `{{orderId}}` and now needs a value. |
 | **Dynamic variable** | `{{$guid}}`, `{{$timestamp}}` and friends. Nothing evaluates these. |
 | **Unsupported auth** | An OAuth 2 flow, AWS SigV4 or NTLM. Bearer, Basic and API key all convert. |
@@ -104,17 +112,24 @@ its author and 401 for everybody else.
 
 ## Sending a request
 
-Pick a request in the tree and press **Send**. The tabs are Postman's, plus two that replace
-its script sandbox:
+Pick a request in the tree and press **Send**. The tabs are Postman's, plus two that do
+deterministically what its script sandbox was mostly used for:
 
 | Tab | What goes in it |
 |--|--|
 | **Params** | Query parameters. Rows can be unticked instead of deleted — a parameter you turned off while debugging is one you want back in ten seconds. |
 | **Headers** | The same, for headers. |
-| **Body** | JSON, raw text, form-urlencoded, or multipart (including file uploads). |
+| **Body** | JSON, raw text, form-urlencoded, or multipart (including file uploads). The JSON box closes your braces, brackets and quotes, steps over a closer you type yourself, takes both halves on Backspace, and keeps your indent on Enter — so `{{` also opens the variable completion, which is the same two keystrokes. |
 | **Auth** | None, Bearer, Basic, API key — or *inherit*, meaning "whatever the collection says". |
 | **Capture** | Pull a value out of the response and bind it to a name, for a later request or a later screen step to use. This is the deterministic replacement for `pm.environment.set(…)`. |
 | **Tests** | What must be true of the response: status, a JSON path, a header, body text, elapsed time. Computed from bytes you already have — no model, no cost, same answer on Tuesday. |
+| **Scripts** | *New in 0.11.4.* Postman pre-request and post-response JavaScript, which **runs**. A dot on the tab means this request has some. See [Scripts](#scripts). |
+
+**Send sends what's on screen.** *From 0.11.4*, unsaved edits go on the wire, so changing a
+header and pressing Send doesn't quietly send the old one — Send is the action that costs
+nothing and writes nothing, and needing to commit first was the wrong price for an
+experiment. **Saving stays a separate press**, because a save is a file write that shows up
+in somebody's `git status`, and "I was looking at this" shouldn't become a commit.
 
 The response pane leads with **the verdict** — whether your tests held — with the status code
 beside it as a coloured chip. Two states that look the same in most tools are kept apart
@@ -123,8 +138,113 @@ here, because collapsing them is how a red suite starts getting ignored:
 - **Failed** — the request completed and a test said no.
 - **Error** — it never completed: DNS, timeout, connection refused.
 
-**Saving is explicit.** Every save is a file write that will show up in somebody's
-`git status`, so "I was looking at this" doesn't become a commit-worthy change.
+Anything the request's scripts did — `pm.test` results (passing ones included), `console`
+output, what a script bound — is shown **beside** the saved tests rather than mixed into
+them, so *"was that the collection or was that the script?"* is answerable at a glance.
+
+**A body on `DELETE` or `OPTIONS` is sent.** Those are ordinary in real APIs, and refusing
+them would just mean reaching for cURL. `GET` and `HEAD` are the exceptions: the editor still
+lets you write a body there (the request may be mid-edit, and the [code snippet](#copying-a-request-as-code)
+renders it faithfully for tools that can send it) and says plainly that this app won't.
+
+## Scripts
+
+*New in 0.11.4. Before that, an imported script was kept, shown, and never executed.*
+
+**Postman pre-request and post-response scripts run.** The **Scripts** tab on any request
+holds the two events, and a dot on the tab — plus a line along the bottom of the editor —
+says a request has one before you press Send.
+
+| Event | When it runs | What it can do |
+|--|--|--|
+| **Pre-request** | Before the request is built, and *before* `{{variables}}` are substituted — the only order in which setting one is useful. | Set variables; rewrite `pm.request` (url, headers, body). |
+| **Post-response** | After the response arrives, before the request's own captures and tests are graded. | Set variables; declare `pm.test(…)` results. |
+
+This module was deliberately built without a script engine: a capture *is* a one-line
+`pm.environment.set`, and a suite whose behaviour lives in JavaScript is one a reviewer can't
+read in a diff. That reasoning still holds, and **Capture and Tests are still the better
+answer where they fit**. What it didn't account for is the collection you already have: a
+real export signs payloads, derives nonces and branches on responses, and *"hand-port forty
+of those before this tool is usable"* is a migration nobody finishes.
+
+> **Two consequences to be clear-eyed about — neither is a bug.**
+>
+> - **This is somebody's code running on your machine.** A workspace is a git repository, so
+>   **Get changes** can bring in a script a colleague wrote, or one that arrived in a
+>   collection they imported from elsewhere. The sandbox (below) isolates against
+>   *accidents*, not against intent. **Review scripts the way you review any code you pull**,
+>   because that is exactly what they are.
+> - **A request with a script is no longer deterministic.** Same inputs, possibly different
+>   bytes on the wire. Nothing about it costs a token or reaches a model — the free-path
+>   guarantee is untouched — but *"reviewable in a diff"* is now only as true as the script.
+
+### Where scripts run, and where they don't
+
+| Path | Scripts |
+|--|--|
+| **Send**, in the app | **Run.** You opened the request and pressed the button. |
+| A **scenario's API step** | **Run.** Same send path, same authority — you built the scenario. |
+| `npm run apitest` (CI) | **Not run.** The runner grades the committed document with its captures and assertions. |
+| An **agent** calling a saved request | **Not run,** deliberately. A model reads instructions off screens SimpleClaw didn't write; *"call the request the operator sanctioned"* must not become *"execute code"*. It sends what the document says and grades what the assertions say. |
+
+**That gap is worth planning around:** a request whose pre-request script builds its auth
+header works on your desk and in a scenario, and 401s in CI. Where a script has a
+capture/assertion equivalent, writing it in the **Capture** and **Tests** tabs is what makes
+the request behave the same everywhere.
+
+### The sandbox, honestly
+
+Scripts run through Node's `vm` in a **fresh global**: no `require`, no `process`, no
+`fetch`, no timers, no reach into the app's own scope, and a **2-second** limit that turns a
+`while (true)` into a blip. Execution is synchronous — `async`/`await` parse, but a returned
+promise isn't waited on, and Postman scripts are overwhelmingly straight-line anyway.
+
+**It is not a security boundary, and calling it one would be a lie.** Reaching the host realm
+from inside a `vm` context is a documented property of Node, not a hole that can be patched
+here. A script that means harm gets what a Node program gets. The real mitigation is that
+scripts arrive through git and are stored as ordinary `.js` files — so read them.
+
+### What `pm` supports
+
+| | |
+|--|--|
+| **Variables** | `pm.environment` · `pm.collectionVariables` · `pm.globals` · `pm.variables`, each with `.get` `.set` `.has` `.unset` `.toObject` `.replaceIn`. All four are views of **one bag** — this app resolves `{{x}}` from a single flat set of values per run, and a `set` that appeared to work but that nothing could read would be worse than the simplification. Names match loosely, the way `{{refs}}` do: `AccessToken`, `access_token` and `access token` are one variable. |
+| **Request** | `pm.request.method` · `.url` (readable and assignable, as a string or via `toString()`) · `.body` · `.headers.get/has/add/upsert/remove`. A pre-request script sees the document's values with their `{{refs}}` **unresolved**, as Postman does; anything it writes is substituted afterwards, and an unresolved reference in *its* edits refuses the send just like one you typed. |
+| **Response** | `pm.response.code` · `.status` · `.responseTime` · `.responseSize` · `.text()` · `.json()` · `.headers.get/has`, and the assertion style `pm.response.to.have.status/header/body/jsonBody`, `pm.response.to.be.ok/success/error`. |
+| **Tests** | `pm.test(name, fn)` — each result is listed in the response pane, passing ones included, since a script is opaque compared to a row in the Tests tab. |
+| **Assertions** | `pm.expect(x)` in chai's shape: `equal` `eql` `include` `match` `property` `length`/`lengthOf` `above` `below` `a`/`an`, the getters `ok` `true` `false` `null` `undefined` `empty`, `deep.equal`/`deep.include`, `not.*`, and the `to`/`that`/`which`/`and`/`is` connectives. **This is not chai** — it's the matchers real tests use. Anything unimplemented is *absent* rather than wrong, so a script using it fails with "not a function" naming the matcher, which is a bug report you can act on. |
+| **Logging** | `console.log/warn/error`, shown in the response pane, prefixed with which script wrote them. |
+| **Not supported** | `pm.sendRequest` — it throws, naming itself. Add a second request instead, which is a thing your colleagues can see. |
+
+### `pm.environment.set` writes to the environment
+
+A declared [capture](#variables-and-environments) lives for one run by design. A script
+calling `pm.environment.set` is asking for Postman's behaviour — the variable is *in* the
+environment afterwards — so the send path honours it: the value is written into the
+**selected environment**, into the row that already has that name if there is one, and the
+response pane logs what it saved. Nothing selected means nothing to write, and it says so
+rather than inventing an environment for you.
+
+> **`environments/<name>.env.json` is a committed file.** A token a script writes there will
+> appear in your `git status`, and the [pre-commit secret scan](#credentials) will flag it —
+> that is the scan doing its job, not misfiring. Two ways to keep the real credential out of
+> the repository: reference it as `{{secret:NAME}}`, resolved from this machine at send time,
+> or have the script store something that isn't itself the secret.
+
+### On disk, and from an older workspace
+
+Each script is a **`.js` sidecar** beside its request — `create-order.prerequest.js`,
+`create-order.test.js` — not a `"line\nline"` string inside the JSON. That's the point: these
+run, they arrive through git, and the only real defence is that somebody reads them, which
+means syntax highlighting, line comments in a review, and a readable diff. The file is the
+source of truth for the text, so editing it in your own editor (or taking a colleague's side
+of a merge) is picked up with no further step, and a renamed request **moves** its scripts so
+git keeps their history.
+
+A workspace imported before 0.11.4 parked its scripts in the request document. Those are read
+as if they were in the new field — nothing needs a migration pass — and the first time you
+edit one from the Scripts tab it's written out properly. Opening a collection to look at it
+doesn't rewrite forty files.
 
 ## Variables and environments
 
@@ -149,7 +269,10 @@ environment button at the top of the page.
 **A capture lives for one run and then vanishes.** There's deliberately no "save this into
 the environment" option: the value a suite most wants to keep is a bearer token from a login
 step, environment files are committed, and writing one there would put a live credential in
-the repo on the first run.
+the repo on the first run. A script's `pm.environment.set` *does* write to the environment,
+because that is what the call means in Postman and a script that silently didn't would be
+worse — with the commit scan as the backstop. See
+[`pm.environment.set` writes to the environment](#pmenvironmentset-writes-to-the-environment).
 
 ## Credentials
 
@@ -206,9 +329,11 @@ with both versions in front of you — rather than *"which half of this JSON blo
 is written to your folder until you've picked, so cancelling is safe.
 
 **Nothing about the layout is accidental**, and it's worth knowing if you review these diffs:
-request bodies live in their own file (an escaped one-line JSON string is unreviewable), and
-ordering is a key on each item rather than a list in a parent file (which would make "we both
-added a request" a conflict every time).
+request bodies live in their own file (an escaped one-line JSON string is unreviewable),
+scripts live in `.js` files beside their request for the same reason and one more — they
+*run*, so a reviewer needs to be able to comment on line 14 — and ordering is a key on each
+item rather than a list in a parent file (which would make "we both added a request" a
+conflict every time).
 
 ## Running the suite in CI
 
@@ -307,6 +432,11 @@ read-only default (`POST`/`PUT`/`PATCH`/`DELETE` need the writes switch, and are
 not even listed to the model), the response cap, and credentials attached by SimpleClaw
 rather than shown to the model.
 
+**A request's [scripts](#scripts) do not run on this path** — deliberately, and it is the
+same reasoning one step further. Granting an agent a collection would otherwise mean granting
+it arbitrary JavaScript execution at the end of a chain that began with text on a web page.
+It sends what the document says and grades what its assertions say.
+
 > **Granting it, in 0.11.** Which collections an agent may call is stored on the agent, as
 > `restApi.collectionIds` (the collection's folder name), with `restApi.mode` set to
 > `saved-only` for saved requests alone or `saved+adhoc` to keep the URL tool as well. There
@@ -320,9 +450,11 @@ rather than shown to the model.
 
 Knowing the edges up front is cheaper than discovering them mid-migration.
 
-- **No script sandbox.** Postman scripts are not executed, ever. What they were mostly for —
-  chaining a value, asserting a response — is Capture and Tests, which are deterministic,
-  reviewable in a diff and free. An untranslatable script is kept and shown, never run.
+- **Scripts run, but not everywhere and not in a real sandbox.** They run on **Send** and in
+  a scenario step; they do **not** run in `npm run apitest` or when an agent calls a saved
+  request. The isolation is against accidents, not intent. `pm.sendRequest` isn't supported,
+  `pm.expect` is the matchers real tests use rather than all of chai, and Postman's dynamic
+  variables (`{{$guid}}`) still don't evaluate. Full detail: [Scripts](#scripts).
 - **No export back to Postman.** Migration is one-way; the redacted archive of your original
   export is what you keep instead.
 - **No AI assertions.** "The model decides whether this response looks right" is a fine
@@ -350,6 +482,8 @@ Plain files, one request each, meant to be read in a pull request:
       list-orders.request.json
       create-order.request.json
       create-order.body.json              the body, so a diff is readable
+      create-order.prerequest.js          a script, so a reviewer can read it
+      create-order.test.js
       customers/
         folder.json
         get-customer.request.json
@@ -371,6 +505,11 @@ that actually changed.
 | **`apitest` exits 2 having run nothing** | A selector matched nothing, the environment name doesn't exist, or the workspace has no requests. All three are refusals by design. |
 | **The agent doesn't use its saved requests** | Check the collection is granted to that agent and that the request is a `GET`/`HEAD` unless writes are enabled — a write is not even listed to a read-only agent. |
 | **`{{something}}` arrived literally at the server** | It isn't a reference the resolver recognises (a `.` in the name, for instance). The field paints those differently from real references. |
+| **A request works on Send but fails in `npm run apitest`** | Its [script](#scripts) isn't running there — the CI runner grades the committed document. Move what the script does into a Capture or a Test. |
+| **A script's variable wasn't saved** | No environment is selected, so `pm.environment.set` had nowhere to go. The response pane says so; pick one beside the URL. |
+| **A script "ran past its time limit"** | The 2-second cap. Scripts are synchronous here, so an `await` that never settles reads as a hang. |
+| **`pm.…` is "not a function"** | That matcher or helper isn't implemented — the surface is [what real tests use](#what-pm-supports), and it says the name rather than answering wrongly. |
+| **Save is refused after a script ran** | `pm.environment.set` put a value in a committed environment file and the secret scan caught it. Use `{{secret:NAME}}` instead. |
 
 More in [Troubleshooting](troubleshooting.md) and
 [Safety & privacy](safety-and-privacy.md#agents-that-call-an-api).

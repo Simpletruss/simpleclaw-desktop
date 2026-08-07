@@ -38,14 +38,16 @@ the environment instead of a settings screen.
 8. [Deleting a run from a remote window](#deleting-a-run-from-a-remote-window)
 9. [Letting the desktop app reach it](#letting-the-desktop-app-reach-it)
 10. [Configuration](#configuration)
-11. [Signing in without a person](#signing-in-without-a-person)
-12. [Authentication](#authentication)
-13. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
-14. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
-15. [Running it somewhere real](#running-it-somewhere-real)
-16. [Security](#security)
-17. [Upgrading](#upgrading)
-18. [Limits](#limits)
+11. [Running more than one run at a time](#running-more-than-one-run-at-a-time)
+12. [Signing in without a person](#signing-in-without-a-person)
+13. [Signing in by hand, on a machine with no screen](#signing-in-by-hand-on-a-machine-with-no-screen)
+14. [Authentication](#authentication)
+15. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
+16. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
+17. [Running it somewhere real](#running-it-somewhere-real)
+18. [Security](#security)
+19. [Upgrading](#upgrading)
+20. [Limits](#limits)
 
 ---
 
@@ -119,8 +121,9 @@ the env-overlaid one, so neither can round-trip an injected key onto your volume
 [schedule](user-guide.md#running-a-task-later-scheduling) used to need `AUTOPLAY_SCHEDULER=on`;
 it is now on in every mode and there is no variable. The thing to know is where the entries
 live: in the data directory, so **N replicas sharing one each arm the same timers** and a 09:00
-task fires N times. Run **one** replica where schedules matter — the browser and the agent loop
-are single-flight anyway. A scheduled run is an ordinary queued job (a `runId`, followable,
+task fires N times. Run **one** replica where schedules matter — an instance can run several
+tasks at once ([concurrency](#running-more-than-one-run-at-a-time)), so a replica is rarely
+what you were short of. A scheduled run is an ordinary queued job (a `runId`, followable,
 stoppable, counted against `AUTOPLAY_MAX_QUEUE`) and waits its turn rather than being skipped
 when something else is running.
 
@@ -425,6 +428,7 @@ variables. Nothing set here is written back to disk.
 |-------|-----------|
 | **Mode** | `AUTOPLAY_DATA_DIR`, `ORGANIZATIONS_DIR`, `AUTOPLAY_ACTIVE_ORG`, `AUTOPLAY_AGENTS_READONLY`, `AUTOPLAY_AGENTS_WATCH_MS` |
 | **HTTP** | `AUTOPLAY_HTTP_HOST` (server default `0.0.0.0`), `AUTOPLAY_HTTP_PORT` (8790), `AUTOPLAY_PUBLIC_URL`, `AUTOPLAY_CORS_ORIGINS`, `AUTOPLAY_MAX_QUEUE`, `AUTOPLAY_RUN_TTL_MIN`, `AUTOPLAY_PAUSE_TIMEOUT_MS` |
+| **Concurrency** | `AUTOPLAY_MAX_CONCURRENT_RUNS` (2 in server mode, 1 on the desktop) — see [below](#running-more-than-one-run-at-a-time) |
 | **Auth** | `AUTOPLAY_AUTH_MODE` (`static`\|`jwt`), `AUTOPLAY_API_TOKEN`, `AUTOPLAY_JWT_PUBLIC_KEY`, `AUTOPLAY_JWT_ISSUER`, `AUTOPLAY_JWT_AUDIENCE`, `AUTOPLAY_JWT_ALGS`, `AUTOPLAY_JWT_LEEWAY_S`, `AUTOPLAY_JWT_ORG_CLAIM`, `AUTOPLAY_RUN_OWNERSHIP` |
 | **Model** | `AUTOPLAY_MODEL_{PROVIDER,BASE_URL,API_KEY,MODEL}`, plus `AUTOPLAY_SYSTEM_MODEL_*` and `AUTOPLAY_DETECTOR_MODEL_*`, which fall back to it field by field |
 | **Browser** | `AUTOPLAY_BROWSER_PATH`, `AUTOPLAY_BROWSER_EXTRA_ARGS`, `AUTOPLAY_BROWSER_KEEPALIVE_MS`, `AUTOPLAY_ALLOW_DESKTOP_SCOPE` |
@@ -457,6 +461,37 @@ Three rules apply across all of them:
 filesystem, for deployments where a shared volume isn't the right answer. Setting it
 half-way — a URI but no database name — is a startup failure rather than a silent fall back
 to empty local storage that would pass its readiness probe and serve an empty agent roster.
+
+## Running more than one run at a time
+
+*New in 0.11.2.* An executor runs **two tasks at once by default**
+(`AUTOPLAY_MAX_CONCURRENT_RUNS`, `1` for one at a time). Above `1` a run doesn't execute in
+the process answering the API at all: it goes to a **worker process** pinned to its agent,
+each with its own headless Chrome. That's what makes it safe rather than merely parallel —
+the capture scope and the browser operator are one-per-process by construction, so no two
+runs can reach the same browser.
+
+**The limit is per agent, and that part isn't a policy choice.** Two *different* agents run
+side by side; two tasks for the *same* agent take turns, because Chrome holds a
+`SingletonLock` on a profile directory and an agent's profile is one directory. A task whose
+agent is busy doesn't block a task for a free agent queued behind it.
+
+**Size the container before raising it.** Budget about **0.9 GB per slot** — an executor
+process plus its Chrome — so the default of 2 makes ~1.8 GB the floor, and 2–4 wants roughly
+4 GB and 2 vCPU. An out-of-memory kill takes down **every** run on the instance, not just the
+one that asked for too much, so set this to `1` on a small instance.
+
+**Taking control works at any setting.** `/v1/runs/:id/takeover`, `/live` and `/input` carry
+the run id and are answered by whichever process holds that run's browser — this one, or a
+worker — so [taking control](user-guide.md#taking-control-mid-run) behaves the same on the
+desktop, on a single-slot container, and on one run out of eight *(fixed in 0.11.3, where a
+run in a worker could not be taken over, a takeover pause was misreported as a manual one and
+so could be killed by the watchdog, and a retiring worker killed its parked browser instead
+of closing it — which lost the sign-in it was holding)*.
+
+**Schedules are still a reason to run one replica.** Concurrency is within an instance;
+schedule entries live in the data directory, so N replicas sharing one still each arm the
+same timers.
 
 ## Signing in without a person
 
@@ -501,11 +536,60 @@ off a web page an attacker may control — anything it can repeat back is someth
 instruction can ask it to repeat somewhere else.
 
 **What this doesn't solve is MFA or a CAPTCHA.** When a site demands one, unattended sign-in
-can't complete. The escape hatch is [takeover](user-guide.md#taking-control-mid-run): a
-person opens the run's live link and drives the browser by hand until it's past, then hands
-back. Set `AUTOPLAY_PUBLIC_URL` to the address the executor is reached by from outside and
-that link is offered automatically; leave it unset and no link is handed out, which is the
-right answer for anything nobody can reach.
+can't complete. Two escape hatches: sign the agent in **once, by hand**, over a link (below);
+or take over mid-run — [takeover](user-guide.md#taking-control-mid-run) lets a person open the
+run's live link and drive the browser until it's past, then hand back. Both need
+`AUTOPLAY_PUBLIC_URL` set to the address the executor is reached by from outside; leave it
+unset and no link is handed out, which is the right answer for anything nobody can reach.
+
+## Signing in by hand, on a machine with no screen
+
+*New in 0.11.2.* The desktop signs an agent in by opening a real Chrome window on that
+agent's profile directory (**Agent → Scope → Log in once**) and letting you do it yourself. A
+deployed executor has the same profile directory and the same need — and no screen to put a
+window on. So the window becomes **a link**.
+
+```sh
+curl -X POST https://autoplay.example.com/v1/agents/work-order-bot/login-session \
+  -H "Authorization: Bearer $AUTOPLAY_API_TOKEN"
+# 201 {"session":{"id":"login_…","agentId":"work-order-bot","expiresAt":…,"ready":false},
+#      "url":"https://autoplay.example.com/login/login_…?t=…"}
+```
+
+Open that URL and you are driving the executor's own browser — frames out, your pointer and
+keystrokes in, over the same channel a run's takeover uses. Sign in as yourself, MFA and all,
+then press **I'm signed in — save & close**. Every later run of that agent starts from that
+session, because it is literally the same profile directory. **From the desktop app it's a
+button**: point the window at the server, open the agent, **Scope → Log in once on
+\<server\>…**.
+
+**Closing rewrites your session cookies to a 30-day expiry**, then closes the browser
+gracefully so Chrome flushes what it holds. That is the difference between *log in once* and
+*log in once per run*: a cookie with no expiry is scoped to the browser's lifetime by
+specification, and the cookie a site gives you at sign-in is session-scoped unless you tick
+its *remember me* box — so without the rewrite the profile came back holding the site's
+analytics cookies and no auth cookie, which looks exactly like a broken profile. The rewrite
+is that checkbox, applied for you. The **site** still decides whether the session is valid, so
+a target that expires sessions nightly still needs signing in nightly.
+
+What the link is, and is not:
+
+- **It is a credential.** While open it is a keyboard on that machine, on a browser holding a
+  session. Minted by someone holding the API bearer, it **expires in 10 minutes**, closes
+  itself **3 minutes** after the last viewer leaves, and reaches nothing but its own session —
+  not runs, not the roster, not the route that mints another link. A run's live link can't
+  open one either: the kind is inside the signed token.
+- **It is unrecorded.** No step history, no screenshots on disk, no keystroke log. Frames are
+  encoded, streamed and dropped.
+- **One at a time, and never beside a run.** Chrome's per-profile lock again: the route
+  answers `409` while a task is running or a warm browser still holds the profile.
+- **Not a way past a hardware key.** A FIDO/WebAuthn key or smartcard is plugged into *your*
+  machine, not the executor's. TOTP, push and SMS are fine.
+- **As durable as the profile is.** Profiles live under the executor's data directory, not on
+  the agents mount (Azure Files SMB can't hold the symlinks Chrome creates). A sign-in
+  survives runs and restarts of the process, but not a new revision or a replica move — mount
+  storage that supports symlinks at `AUTOPLAY_DATA_DIR` if it must, or re-send a link. It also
+  means a multi-replica deployment needs the sign-in and the runs on the same replica.
 
 ## Authentication
 
@@ -592,10 +676,13 @@ profile, the profile is a throwaway in the container's own temp directory.
 pointing at a Key Vault or secrets-manager mount, rather than the key at rest in an
 `agent.json` on a share several people can read.
 
-**Scaling is by replica, not by concurrency.** One instance performs one run at a time — the
-agent loop and its browser are single-flight — and extra work queues, with `queuePosition`
-telling the caller where it is. To run more at once, run more instances, and give each its
-own storage: two executors sharing one agent's folder will fight over the same run history.
+**Scale within an instance first, then by replica** *(changed in 0.11.2)*. An instance runs
+`AUTOPLAY_MAX_CONCURRENT_RUNS` tasks at once — two by default, one worker process and one
+Chrome each, and never two for the same agent — and anything beyond that queues, with
+`queuePosition` telling the caller where it is. See
+[Running more than one run at a time](#running-more-than-one-run-at-a-time) for the memory
+budget, which is the real ceiling. Beyond that, run more instances and give each its own
+storage: two executors sharing one agent's folder will fight over the same run history.
 
 ## Security
 
@@ -656,7 +743,11 @@ feature, and a service that replaces itself without being asked is not one.
 - **Browser-scope agents only.** No desktop, no window scope. `AUTOPLAY_ALLOW_DESKTOP_SCOPE=1`
   exists as an escape hatch for a host with a real display, but it isn't what the container is
   for, and there is nothing on a container's virtual screen to operate.
-- **One run at a time per instance.** Scale with replicas.
+- **Two runs at a time per instance**, and never two for the same agent — raise or lower it
+  with `AUTOPLAY_MAX_CONCURRENT_RUNS`, budgeting ~0.9 GB a slot, then scale with replicas. See
+  [Running more than one run at a time](#running-more-than-one-run-at-a-time).
+- **One sign-in link at a time, and not while a run holds the browser** — see
+  [Signing in by hand](#signing-in-by-hand-on-a-machine-with-no-screen).
 - **No teaching from a server.** Recording a demonstration, editing a persona, and
   configuring scope are done by a person in the desktop app; the server runs what it's given.
   Since 0.9 that app can watch a server, start work on it and upload to it — but it still
