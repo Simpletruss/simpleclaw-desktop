@@ -4,14 +4,18 @@
     "'ref' is the git ref whose docs/ folder supplies that version's content;",
     "'.' means this working tree (which is main when the site is built in CI).",
     "To publish a new series: tag the release, add an entry at the top of 'versions',",
-    "and point 'latest' at it. Everything else — banners, switcher, footers — follows."
+    "and point 'latest' at it. Everything else — banners, switcher, footers — follows.",
+    "A release tag is the usual ref, but it carries the docs as they stood when the",
+    "installers were cut. Where a series' docs were finished after its last release",
+    "(0.11), point it at a 'docs-<series>' tag instead — never move a release tag, its",
+    "GitHub release holds the downloads."
   ],
   "siteUrl": "https://simpletruss.github.io/simpleclaw-desktop/",
   "releasesUrl": "https://github.com/Simpletruss/simpleclaw-desktop/releases",
   "latest": "0.12",
   "versions": [
     { "series": "0.12", "label": "0.12.x", "ref": ".", "note": "current release" },
-    { "series": "0.11", "label": "0.11.x", "ref": "v0.11.5" },
+    { "series": "0.11", "label": "0.11.x", "ref": "docs-0.11" },
     { "series": "0.10", "label": "0.10.x", "ref": "v0.10.1" },
     { "series": "0.9", "label": "0.9.x", "ref": "v0.9.1" },
     { "series": "0.8", "label": "0.8.x", "ref": "v0.8.0" },
