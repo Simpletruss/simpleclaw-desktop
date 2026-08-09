@@ -94,7 +94,7 @@ model** is offered the tool — and therefore **which tab** you manage it on:
 | `owner` | Who can call it | Managed in | Reach for it when |
 |---------|-----------------|------------|-------------------|
 | `planner` | **The agent itself**, mid-run, alongside its click/type tools. | Planner → Functions | The agent needs to read or do something directly rather than through a UI: look up a record, fetch a price, file a ticket. |
-| `observer` | **The Observer** — the supervisor that watches each turn and corrects a drifting run — while it decides whether the run went wrong. | Observer → Functions | The supervisor needs a fact it can't read off the screen in order to judge: what this task is *supposed* to produce, whether a record really changed in the backing system. |
+| `observer` | **The Observer** — the supervisor that patrols a run, checks a ticked item and a finish, and (from 0.12) is asked what to do when the run is [stuck](user-guide.md#when-a-run-gets-stuck-the-observer) — while it decides what went wrong. | Observer → Functions | The supervisor needs a fact it can't read off the screen in order to judge: what this task is *supposed* to produce, whether a record really changed in the backing system. |
 | `chronos` | **Chronos** — the pacing supervisor, on its own wall-clock timer — while it decides whether the run is behind. | Chronos → Functions | The clock alone doesn't say "late": how long this kind of job usually takes, whether a queue it depends on is backed up. |
 
 Anything else — or a missing `owner` — is treated as `planner`.

@@ -141,7 +141,27 @@ your mouse left the panel.
 
 *New in 0.4.2.* An agent can be granted **REST API access**: one tool that fetches from
 an HTTP API directly, instead of opening the site and reading values off the screen. It
-is configured per agent, on that agent's page under **Planner → MCP Servers**.
+is configured per agent, on that agent's page under **Planner → API access** *(its own page
+from 0.12; before that, under MCP Servers)*.
+
+**The site the agent is already on is a separate question — and a smaller one.** *New in
+0.12.* A headless-browser agent can call **its own site's** endpoints with `http_request`
+without any of the configuration below. Nothing here governs it, and nothing needs to:
+
+- The request is sent **from inside the open page**, so it is authenticated by the session
+  the run is already signed in with. There is no credential to store, and none is attached.
+- It reaches only the origins the run may **navigate** to — the same seal, checked the same
+  way. Off-seal is refused, and the agent is told why.
+- It is **less** authority than the click it replaces, not more. The agent can already press
+  any button on those pages, and those buttons call this same API.
+- Replies are **truncated** before the model reads them, so a large response cannot crowd
+  out the task.
+
+Stated plainly: a page that can talk the agent into an action can talk it into an
+`http_request` too. What that buys is an action on the site the agent is already working —
+one it could have performed by clicking — which is why the origin seal, rather than a second
+allowlist, is the control that matters here. Everything below is about a *different* risk:
+reaching a host the run is **not** on.
 
 **From 0.11, prefer saved requests.** An agent can be pointed at collections in
 [Web APIs](web-apis.md) and call those requests **by name**, supplying only the variables each

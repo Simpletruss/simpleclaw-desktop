@@ -20,6 +20,8 @@ Quick fixes for the most common issues.
 | "It does nothing" | **Dry run** is probably still ON. Turn it off once you're ready for real actions. |
 | Actions happen too fast to follow | Increase the **Step delay** in Settings so each step is easier to watch and interrupt. |
 | The next screenshot shows the *old* page after a click | Raise **Nav settle** so the page has time to load before the model looks again. |
+| It keeps repeating the same click and never gets past a screen | The run already breaks the loop by itself, but it can only tell the agent to try something else — not *why* the element isn't there. Switch the **Observer** on for that agent (0.12 and later): when the guards catch a stall, the run waits for it to say what is actually on screen and which different move to make. See [When a run gets stuck](user-guide.md#when-a-run-gets-stuck-the-observer). |
+| It reported success but nothing changed | Same answer: with the Observer on (0.12+), a `finished()` is checked against the screen first and sent back for one more turn if the goal isn't visibly done — once per run. Without it, the agent's own claim is final. |
 | It reports a column or value as *missing* from a wide table | Those columns are past the table's right edge, and it reaches them by scrolling sideways (0.10.1 and later — older builds only ever scrolled up and down). If it still can't, the pane is too narrow to make progress: widen the window, or give a headless-browser agent a wider **viewport** on the Scope tab. |
 
 ## Platform-specific

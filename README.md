@@ -37,7 +37,21 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.11 — a Postman alternative, built in.** The new **Web APIs** page is a full HTTP
+**New in 0.12 — it can ask the system, and it notices when it's stuck.** On a web system, an
+agent can now call **the site's own endpoints from inside the page it is signed in to**
+(`http_request`) — one call where reading the answer off the screen took a search box, a wait
+and a results list. There is nothing to configure and nothing new granted: the request is
+authenticated by the session the run already holds, and it reaches only the origins the run may
+navigate to, so it is less authority than the click it replaces. Separately, the optional
+**Observer** stopped being only a watcher: when the run's own guards catch it stuck, the run
+*waits* while a second model says what is actually on screen and which different move to make,
+and a `finished()` that isn't visibly done is sent back for one more turn. A healthy run hears
+nothing from it, and it is off by default. See
+[Calling an API instead of a UI](docs/user-guide.md#calling-an-api-instead-of-a-ui),
+[When a run gets stuck](docs/user-guide.md#when-a-run-gets-stuck-the-observer) and
+[Release notes](docs/release-notes.md).
+
+**From 0.11 — a Postman alternative, built in.** The **Web APIs** page is a full HTTP
 client: collections, requests, environments, authentication, plus **Capture** and **Tests** in
 place of Postman's script sandbox. Import your Postman collections in one step and read a
 report of every lossy decision the conversion made. **It costs nothing to use** — sending a

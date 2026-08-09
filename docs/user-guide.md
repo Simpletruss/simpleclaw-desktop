@@ -65,12 +65,13 @@ The complete manual for SimpleClaw 0.9 (Windows, macOS, and Linux).
 11. [Running it as a server](#running-it-as-a-server)
 12. [Pointing it at a server](#pointing-it-at-a-server)
 13. [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui)
-14. [Writing good goals](#writing-good-goals)
-15. [Action types](#action-types)
-16. [Settings reference](#settings-reference)
-17. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
-18. [Current limitations](#current-limitations)
-19. [Glossary](#glossary)
+14. [When a run gets stuck (the Observer)](#when-a-run-gets-stuck-the-observer)
+15. [Writing good goals](#writing-good-goals)
+16. [Action types](#action-types)
+17. [Settings reference](#settings-reference)
+18. [Extending SimpleClaw (custom functions)](#extending-simpleclaw-custom-functions)
+19. [Current limitations](#current-limitations)
+20. [Glossary](#glossary)
 
 ---
 
@@ -768,12 +769,47 @@ Three consequences worth knowing:
 
 ## Calling an API instead of a UI
 
-*New in 0.4.2. Saved requests are new in 0.11.*
+*New in 0.4.2. Saved requests are new in 0.11. The site's own API is new in 0.12.*
 
 Some of what an agent needs is available as an API. Reading it off a screen then means
 opening a page, finding the row, and squinting at a number — slower and easier to get
 wrong than simply asking for it. So an agent can be given **REST API access**: one tool
 that fetches from an HTTP API and hands the response back as text.
+
+There are two different questions here, and it's worth separating them before the settings
+below make sense:
+
+| You want the agent to reach… | It uses | You configure |
+|---|---|---|
+| **the site it is already browsing** | `http_request` (0.12+, browser scope) | nothing — see [below](#calling-the-site-the-agent-is-already-on) |
+| **another host** | saved requests, or the ad-hoc `rest_request` | **Planner → API access**: allowed hosts and credentials |
+
+### Calling the site the agent is already on
+
+*New in 0.12. Headless-browser scope only.*
+
+A browser-scope agent can call its **own** site's endpoints with `http_request`, giving a
+path — `http_request('/api/records/search')` — and reading the response back on the same
+turn. There is nothing to switch on and nothing to grant, because it adds no reach: the
+request is sent **from inside the open page**, so the signed-in session the run is already
+holding authenticates it, and it can only reach the origins the run is already allowed to
+navigate to. Anything off that seal comes back refused, with the reason.
+
+This is worth reaching for when an answer is one call away and several screens away
+otherwise — resolving a name to an id, then going straight to the record with `open_url`,
+instead of a search box, a wait, a results list and a row to pick out.
+
+Two things to know:
+
+- **Tell it the endpoint.** As with everything else, the agent defaults to working the way a
+  person would. Name the endpoint in the agent's persona, a skill or a demonstration, the way
+  you'd tell a colleague: *"POST `/internal-bff/Search` with `{"query": "…"}`"*.
+- **The reply is truncated** before the model reads it, so a large response can't crowd out
+  the task.
+
+A desktop-scope run has no page to send from, and says so if it tries.
+
+### Reaching another host
 
 > **Prefer saved requests.** From 0.11 an agent can call the requests saved in
 > [Web APIs](web-apis.md) **by name** — it picks one from a list and fills in the variables
@@ -789,9 +825,10 @@ The rest of this section is the **ad-hoc** tool — the one an agent uses to com
 URLs. Everything it is bounded by (the host allowlist, the read-only default, the response
 cap, credentials the model never sees) applies to saved requests too.
 
-You configure it on the agent's own page, under **Planner → MCP Servers → REST API access**.
-It belongs to the agent rather than to the app, because which system an agent should
-reach depends on its job — and so does whose credentials it should carry.
+You configure it on the agent's own page, under **Planner → API access** *(its own page from
+0.12; it used to sit under **MCP Servers**, which suggested a server was involved — there
+isn't one)*. It belongs to the agent rather than to the app, because which system an agent
+should reach depends on its job — and so does whose credentials it should carry.
 
 To turn it on you need two things:
 
@@ -819,6 +856,55 @@ Two things worth knowing:
   are available and when to prefer them.
 - **Read the safety notes first.** This is the one feature that sends your data somewhere
   other than your model endpoint → **[Agents that call an API](safety-and-privacy.md#agents-that-call-an-api)**.
+
+## When a run gets stuck (the Observer)
+
+*Reworked in 0.12. Off by default — a run with it off behaves exactly as before.*
+
+The **Observer** is a second model that looks at the run from outside it. It never touches
+the machine; all it can do is say something into the next turn. Turn it on per agent, on the
+agent's **Observer** tab, where it can also be pointed at its own endpoint — a cheap, fast
+model supervising a slower planner is the usual arrangement.
+
+It comes in on three occasions:
+
+| When | What it is asked | Does the run wait? |
+|------|------------------|--------------------|
+| **Patrol** — every N steps | *Is anything wrong?* Wrong page, a success only claimed, drift from the goal | No |
+| **Milestone** — a plan item ticked off, or a run about to finish | *Did that actually happen?* | No (except the finish — see below) |
+| **Repair** — the run is stuck | *What is wrong, and what should it do instead?* | Yes |
+
+**A healthy run hears nothing.** A check that sees no problem calls nothing, logs nothing and
+injects nothing, so leaving it on doesn't add noise to a run that is going fine.
+
+**Getting stuck is detected mechanically, not judged.** The run itself notices a screen that
+hasn't changed across acting turns, an action cycle repeating, an identical answer twice over,
+or an element the detector cannot find. Only then is the Observer asked — and it is not asked
+*whether* the run is stuck, only *what* is actually on the screen and which different move to
+make. Its answer names the gap first (what the step expected versus what is shown) and the
+move second, so you can check the reading against the screenshot rather than take "try
+something else" on faith.
+
+That reading is then all the model sees for **one** turn, in place of the plan checklist:
+handing a stuck run the same list pointing at the same item is how a recovery ends up
+repeating the move it was recovering from. The turn after is normal again.
+
+**A finish gets checked before it is accepted.** When the agent declares the task complete,
+the Observer takes one look; if the goal isn't visibly accomplished, the run gets one more
+turn with the reason instead of ending on a claim. That veto is allowed **once per run** —
+after that the agent's own judgement stands, because a run that can never finish is worse
+than one that finishes early.
+
+**It is never required.** If the Observer is off, unreachable, slow to answer, or has nothing
+to say, the run recovers the way it always did.
+
+| Setting | What it does |
+|---------|--------------|
+| **Enabled** | Whether this agent has an Observer at all. Off by default. |
+| **Patrol: check every N steps** | Paces the silent background patrol only. Milestones, a stall and a locator miss trigger a check on their own, whatever this is set to. |
+| **Model / endpoint** | Defaults to the Planner's own model; the **Model** page points it somewhere cheaper. |
+| **Judging instructions** | Your own rubric, replacing the built-in one. Blank = built in. |
+| **Functions** | Custom functions only the Observer may call — see [Extending SimpleClaw](#extending-simpleclaw-custom-functions). |
 
 ## Writing good goals
 
@@ -864,7 +950,8 @@ A few more appear only in the situations that call for them:
 | `read_text` | The agent works in a browser — reads the page's visible text in one step. |
 | `open_skill` | It has skills held back as summaries — loads one's full instructions. |
 | `complete_step` | The run has a plan — ticks off the current item and moves to the next. |
-| `rest_request` | It has [API access](#calling-an-api-instead-of-a-ui) (0.4.2+, off by default) — fetches from an allowlisted HTTP API instead of using that system's interface. |
+| `http_request` | The agent works in a headless browser (0.12+) — calls **this site's own** endpoints from inside the page it is on, signed in as the run already is. Nothing to configure; see [Calling the site the agent is already on](#calling-the-site-the-agent-is-already-on). |
+| `rest_request` | It has [API access](#reaching-another-host) (0.4.2+, off by default) — fetches from an allowlisted HTTP API on **another** host instead of using that system's interface. |
 | *MCP tools* | You attached an MCP server to the agent — its tools are offered alongside these. |
 
 > Names and wording follow SimpleClaw 0.4.2. Earlier versions used a lower-level
@@ -884,7 +971,8 @@ A few more appear only in the situations that call for them:
 | **Max steps** | Cap on actions per run | Default 30. Stops runaway loops; increase for longer tasks. |
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
 | **Runs → Maximum tasks running at the same time** | How many tasks the batch command may run at once | App-wide (**Settings → General → Runs**). Default 1 = one after another. Only affects the source-only batch command, not the window or the Agent API — see [Running many tasks at once](#running-many-tasks-at-once-advanced). |
-| **REST API access** | Whether this agent may call an HTTP API | Set per agent (**Planner → MCP Servers**), not app-wide. Off by default, and needs at least one allowed host — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
+| **REST API access** | Whether this agent may call an HTTP API on another host | *Moved in 0.12.* Set per agent (**Planner → API access**), not app-wide. Off by default, and needs at least one allowed host. Calling the site the agent is **already on** needs none of this — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
+| **Observer** | A second model that checks the run from outside it | *Reworked in 0.12.* Per agent (**Observer**), off by default. Patrols on a cadence, checks a ticked item and a finish, and is asked what to do when the run is stuck — see [When a run gets stuck](#when-a-run-gets-stuck-the-observer). |
 | **Run servers** | Which machines this window can be pointed at | *New in 0.9; renamed in 0.10.* App-wide (**Settings → Run servers**), on two pages: **This computer** (derived and locked, and where its own `Authorization` header is shown) and **Remote servers** — a name, URL and bearer each, with **Check** to probe one. See [Pointing it at a server](#pointing-it-at-a-server). |
 | **Speech in / Speech out** | The transcription and text-to-speech endpoints | *New in 0.10.* Set per agent (**Voice**), and shared by dictation, the wake word and phone calls. A blank API key reuses the model key for the same host — see [Talking to it](#talking-to-it-voice). |
 
@@ -921,11 +1009,12 @@ description, the agent's persona, or a skill. Full details and worked examples:
 **[Custom functions](functions.md)**.
 
 > The **Observer** and **Chronos** themselves aren't add-ons — they're built in, each with its
-> own tab on every agent. Custom functions just give them something to call.
+> own tab on every agent. Custom functions just give them something to call. What the Observer
+> does with what it sees: [When a run gets stuck](#when-a-run-gets-stuck-the-observer).
 
 ## Current limitations
 
-SimpleClaw 0.10.x is still an early release:
+SimpleClaw 0.12.x is still an early release:
 
 - **One surface per run** — an agent works on a monitor, a window, *or* a headless
   browser; it can't span several at once. A [scenario](#running-a-whole-process-scenarios)

@@ -10,14 +10,89 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.11.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.12.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.11 — Web APIs: the Postman alternative
+## 0.12 — Ask the page's own API, and a supervisor that steps in
 
 *Current release.*
+
+**An agent can ask the site it is on for an answer, instead of clicking five screens to
+read one.** A browser-scope run gets **`http_request`**: give it a path
+(`/api/records/search`), and the request goes out **from inside the open page** — so the
+session the run is already signed in with is what authenticates it. No key, no token, no
+allowlist, nothing to configure. That is what makes it different from the ad-hoc
+[REST tool](user-guide.md#calling-an-api-instead-of-a-ui), which reaches *another* host and
+therefore still needs both. Look an id up, then `open_url` the path the answer names: two
+steps in place of a search box, a wait, a results list and a squint at a row.
+→ [Calling the site the agent is already on](user-guide.md#calling-the-site-the-agent-is-already-on)
+
+**It is bounded by the same seal the run already has.** The request can only reach the
+origins the run may navigate to; off-seal comes back refused, with the reason, on the same
+turn. This grants nothing new on purpose: the agent can already click any button on those
+pages, and asking the endpoint behind the button directly is *less* authority than pressing
+it, not more. Replies are truncated before the model reads them, so a large JSON body cannot
+crowd out the task. Browser scope only — a desktop run has no page to send from, and is told
+so rather than left guessing.
+→ [Agents that call an API](safety-and-privacy.md#agents-that-call-an-api)
+
+**Teach it the endpoint the way you'd tell a colleague.** A skill or a demonstration that
+says *"POST /internal-bff/Search with `{query}`"* is enough; a method written in prose but
+omitted from the call is corrected (a request with a body is a POST, never a GET, which used
+to come back `405` and read as a broken endpoint). There is no picker and no allowlist to
+fill in, because there is nothing to grant.
+
+**The supervisor no longer only watches — it gets asked, and it can hold a finish.** The
+Observer used to run on a cadence and whisper a note into the next turn. It now works three
+ways: a **silent patrol** on that same cadence, a **check at milestones** (an item ticked
+off, a run about to be declared done), and a **repair** the run *waits* for when it is
+demonstrably stuck. Detection stays where it was — mechanical guards that compare frames and
+watch for a repeating action — so the model is never asked *whether* something is wrong, only
+**what**. Its answer must name the gap first: what the plan item expected, what the screen
+actually shows, and then one move that differs from the one being repeated.
+→ [When a run gets stuck](user-guide.md#when-a-run-gets-stuck-the-observer)
+
+**A rescued turn stops being handed back the context it was stuck in.** Breaking a loop
+already cleared the run's history, but the plan brief was re-rendered in full every turn, so
+the model got the same checklist pointing at the same item and re-derived the same move. That
+one turn now shows the supervisor's reading of the current screen instead — plus the item in
+question and its neighbours by title — and the turn after is normal again. It is a jolt, not
+a mode.
+
+**A run can no longer end on a success it only claimed.** `finished()` gets one look at the
+screen before it is accepted; if the goal is not visibly accomplished, the run gets one more
+turn with the reason. Once per run, because a supervisor that disagrees twice is disagreeing
+with judgement rather than catching a mistake, and a run that can never finish is worse than
+one that finishes early. The plan's own auto-finish goes through the same gate — ticking your
+way to the end is not a way around it.
+
+**Nothing above changes a run with the Observer switched off** (which is the default), and a
+healthy run with it on reads exactly as it did: a check that sees nothing wrong says nothing,
+logs nothing and costs nothing. When the supervisor is unreachable, times out, or has no
+verdict, the run falls back to the recovery it always had.
+
+**Also in this release**
+
+- **REST API access has its own page**, at **Planner → API access**. It was filed under
+  **MCP Servers**, which told every reader the opposite of the truth: `rest_request` is a
+  built-in capability with no server, protocol or transport anywhere in it.
+- **The activity feed reads an API call as a path**, `http_request('/api/records/search')`,
+  rather than burying it in escaped JSON — the path is the part you scan a feed for.
+- **A locked install no longer displays the model id.** Provider and endpoint stay on
+  screen, because the first thing anyone debugging a `401` needs is who served the request
+  and from where; which model backs the product is not something that install can change.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.12.0** | `http_request` for a browser-scope agent, the supervisor's repair and finish gate, and API access on its own page. |
+
+---
+
+## 0.11 — Web APIs: the Postman alternative
 
 **There is a full API client in the app now.** Collections, requests, environments,
 authentication, and a response pane that leads with whether your checks held — under
