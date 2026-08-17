@@ -82,7 +82,7 @@ screen to an AI model. Please read this page before using it on real work.
   scheduled work, keep the goals narrow, and check the run afterwards in **Run history**
   (scheduled runs carry the **Schedule** label).
 - **The same goes double for a batch.** The
-  [batch command](user-guide.md#running-many-tasks-at-once-advanced) starts a whole list
+  [batch command](user-guide.md#running-more-than-one-task-at-once) starts a whole list
   unattended, and with the **Runs** limit above 1, several at the same time — so a bad goal
   is repeated rather than caught. Use `--list` to check what will run before you commit to
   it, `--timeout` so nothing can grind on indefinitely, and headless-browser agents rather

@@ -31,18 +31,20 @@ Three things make it different from the tool you're replacing:
 
 1. [Opening a workspace](#opening-a-workspace)
 2. [Coming from Postman](#coming-from-postman)
-3. [Sending a request](#sending-a-request)
-4. [Scripts](#scripts)
-5. [Variables and environments](#variables-and-environments)
-6. [Credentials](#credentials)
-7. [Sharing it with your team](#sharing-it-with-your-team)
-8. [Running the suite in CI](#running-the-suite-in-ci)
-9. [Copying a request as code](#copying-a-request-as-code)
-10. [Mixing API steps with screen steps](#mixing-api-steps-with-screen-steps)
-11. [Letting an agent call your saved requests](#letting-an-agent-call-your-saved-requests)
-12. [What it deliberately doesn't do](#what-it-deliberately-doesnt-do)
-13. [What's on disk](#whats-on-disk)
-14. [Troubleshooting](#troubleshooting)
+3. [Organising a collection](#organising-a-collection)
+4. [Sending a request](#sending-a-request)
+5. [Reading the response](#reading-the-response)
+6. [Scripts](#scripts)
+7. [Variables and environments](#variables-and-environments)
+8. [Credentials](#credentials)
+9. [Sharing it with your team](#sharing-it-with-your-team)
+10. [Running the suite in CI](#running-the-suite-in-ci)
+11. [Copying a request as code](#copying-a-request-as-code)
+12. [Mixing API steps with screen steps](#mixing-api-steps-with-screen-steps)
+13. [Letting an agent call your saved requests](#letting-an-agent-call-your-saved-requests)
+14. [What it deliberately doesn't do](#what-it-deliberately-doesnt-do)
+15. [What's on disk](#whats-on-disk)
+16. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -51,16 +53,18 @@ Three things make it different from the tool you're replacing:
 **Web APIs** is in the left rail. On first open it has nothing in it, because a workspace is
 a folder you choose rather than a hidden database.
 
-Press **+** at the top of the workspace list and pick one of two ways in:
+Press **+** at the top of the workspace list and pick one of three ways in:
 
 | | When to use it |
 |--|--|
-| **Open a folder…** | Starting fresh, or you already have a checkout. Any folder works; SimpleClaw scaffolds the few files it needs the first time. |
+| **New workspace…** | *New in 0.13.* Starting from nothing: give it a name and a place to put it, and it's scaffolded for you — rather than pointing a folder picker at an empty directory and trusting that it will be. |
+| **Open a folder…** | You already have a checkout. Any folder works; SimpleClaw scaffolds the few files it needs the first time. |
 | **Clone a repository…** | Joining a team. Paste the repository URL — it lands in a sub-folder named after the repo, and a private one asks for a token when it turns out to need one, not before. |
 
-The switcher at the top of the page changes which workspace you're looking at, and
-**⚙ Settings → API workspaces** is where you rename one, show it in your file manager, drop
-it from the list (the folder is untouched) or delete the folder outright.
+The switcher at the top of the page changes which workspace you're looking at. From 0.13 the
+workspace row in the sidebar also carries **Remove from list** (the folder is untouched) and
+**Delete folder…**; **⚙ Settings → API workspaces** still has both, plus rename and
+show-in-file-manager.
 
 **This machine remembers where your checkouts are; the workspace itself doesn't.** Which
 environment you have selected, and any credential you saved, are yours alone — pushing
@@ -110,6 +114,36 @@ Three behaviours worth knowing:
 to open three files to evaluate is exactly the kind of thing that makes a request work for
 its author and 401 for everybody else.
 
+## Organising a collection
+
+*New in 0.13.* Until this release the tree could only be **read**: requests arrived through the
+Postman importer or `git clone`, and adding, moving or removing anything meant editing files by
+hand. Everything structural is now in the panel.
+
+| | Where |
+|--|--|
+| **Add a request** | The **＋** on a collection or folder row. |
+| **Rename** | In place, on the row. |
+| **Delete** | Behind a confirmation that **counts what goes with it** — a folder takes its subtree. |
+| **Collections** | Create and delete from the top of the tree. |
+| **Folders** | Add, rename, delete, **duplicate**, and copy/paste — nested to any depth. |
+| **Copy / paste** | A request or a whole folder subtree, into any collection or folder. |
+| **Drag and drop** | Reorder among siblings, move into a folder, or cross collections. Drop on the upper or lower half of a request to place it either side; drop on the middle of a folder to put it inside. |
+
+Two things about how this lands on disk, since the folder is a git repository and somebody will
+review the diff:
+
+- **A move within a collection is a real rename**, so git records the subtree as moved rather
+  than as a delete plus an add. Across collections there is no such operation, so it is a write
+  and a delete, and git infers the rename from the content if it can.
+- **A pasted request or folder gets new ids.** Reusing the source's id would move the original
+  instead of copying it — a paste that deletes what it pasted.
+
+**Your unsaved edits survive switching requests** *(fixed in 0.13)*. They used to be discarded
+the moment you clicked another request in the tree — silently, and with no way back. Each
+request keeps its own draft now, and saving from the tree (a rename, say) doesn't throw away
+what you were typing in the editor.
+
 ## Sending a request
 
 Pick a request in the tree and press **Send**. The tabs are Postman's, plus two that do
@@ -119,7 +153,7 @@ deterministically what its script sandbox was mostly used for:
 |--|--|
 | **Params** | Query parameters. Rows can be unticked instead of deleted — a parameter you turned off while debugging is one you want back in ten seconds. |
 | **Headers** | The same, for headers. |
-| **Body** | JSON, raw text, form-urlencoded, or multipart (including file uploads). The JSON box closes your braces, brackets and quotes, steps over a closer you type yourself, takes both halves on Backspace, and keeps your indent on Enter — so `{{` also opens the variable completion, which is the same two keystrokes. |
+| **Body** | JSON, raw text, form-urlencoded, multipart (including file uploads), or **GraphQL** *(0.13)*. The JSON box closes your braces, brackets and quotes, steps over a closer you type yourself, takes both halves on Backspace, and keeps your indent on Enter — so `{{` also opens the variable completion, which is the same two keystrokes. |
 | **Auth** | None, Bearer, Basic, API key — or *inherit*, meaning "whatever the collection says". |
 | **Capture** | Pull a value out of the response and bind it to a name, for a later request or a later screen step to use. This is the deterministic replacement for `pm.environment.set(…)`. |
 | **Tests** | What must be true of the response: status, a JSON path, a header, body text, elapsed time. Computed from bytes you already have — no model, no cost, same answer on Tuesday. |
@@ -146,6 +180,44 @@ them, so *"was that the collection or was that the script?"* is answerable at a 
 them would just mean reaching for cURL. `GET` and `HEAD` are the exceptions: the editor still
 lets you write a body there (the request may be mid-edit, and the [code snippet](#copying-a-request-as-code)
 renders it faithfully for tools that can send it) and says plainly that this app won't.
+
+**A GraphQL body** *(0.13)* is two boxes — the query and its variables — sent as
+`{"query": …, "variables": …}`. Blank variables are **omitted** rather than sent as `{}`, which
+some servers reject for an operation that declares none. The variables box stays plain text
+while you type, because JSON halfway through being written isn't an error worth interrupting
+you over; it's parsed at Send, where a syntax error is reported as one. A Postman export's
+`graphql` mode imports with both fields intact.
+
+**The request and response panes are resizable**, as are the query and variables boxes, and
+both remember where you put them.
+
+## Reading the response
+
+*New in 0.13.* The response pane used to be pretty-printed text in a box. It is now the part of
+this page you'll spend the most time in.
+
+**JSON renders as a foldable tree.** Every object and array collapses, and a folded node states
+**how many** items it holds — folding that hides the count hides the thing you were looking for.
+A string that is itself JSON — the escaped `config` document that real APIs return — gets an
+**as JSON** button, instead of having to be copied somewhere else to be read.
+
+**A format picker** covers JSON, XML, HTML, YAML, JavaScript, Markdown and Raw. It starts from
+the `Content-Type` and falls back to sniffing the body, because plenty of APIs answer
+`text/plain` for JSON. Markdown renders; the rest are coloured.
+
+**Ctrl+F finds text in it** — match count, next/previous, wrap-around, a case toggle, Escape to
+close. It searches **inside the tree** as well as the text views, expanding whatever it needs to
+show a match: a search reporting twelve results while showing none is worse than one reporting
+none. It's literal text, not a regular expression, since a response body is full of `{`, `.` and
+`*`.
+
+**Copy, Save and Clear.**
+
+- **Copy** and **Save** write the body **as displayed** — you've been reading the formatted
+  version, and one unbroken line is a different artefact.
+- **Save** names the file after the request and takes its extension from the format on screen,
+  so switching the viewer to XML gets you an `.xml` file.
+- **Clear** drops the result only. The request, its unsaved draft and its captured values stay.
 
 ## Scripts
 
@@ -482,6 +554,8 @@ Plain files, one request each, meant to be read in a pull request:
       list-orders.request.json
       create-order.request.json
       create-order.body.json              the body, so a diff is readable
+      search-orders.body.graphql          a GraphQL query — multi-line code, in its own file
+      search-orders.body.variables.json   its variables
       create-order.prerequest.js          a script, so a reviewer can read it
       create-order.test.js
       customers/

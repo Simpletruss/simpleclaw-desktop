@@ -37,7 +37,23 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.12 — it can ask the system, and it notices when it's stuck.** On a web system, an
+**New in 0.13 — the plan can change its mind, and the app runs more than one task.** A run
+follows a plan composed from that agent's own demonstrations, and every numbered line of it is
+now tracked as its own **sub-step**, so you can see which line a run is on and how many times it
+has tried. When one of those lines turns out to be wrong — the button opens a different dialog,
+the control moved — a stuck run **rewrites the rest of its plan from the screen in front of it**
+rather than being handed the same wrong instruction for the remainder of its budget. An item
+that says *"there is nothing to do if…"* is checked **before** the work by SimpleClaw itself: it
+locates the place the condition names, magnifies it so the look-alike value in a side card isn't
+in the picture, and forms its reading before it is told what the answer should be. Separately,
+**⚙ Settings → General → Concurrency** now governs the whole machine rather than the batch
+command alone — raise it and the workspace runs several tasks at once, with a picker for
+switching between them, and a browser agent can hold several signed-in profiles. See
+[The plan a run follows](docs/user-guide.md#the-plan-a-run-follows),
+[Running more than one task at once](docs/user-guide.md#running-more-than-one-task-at-once) and
+[Release notes](docs/release-notes.md).
+
+**From 0.12 — it can ask the system, and it notices when it's stuck.** On a web system, an
 agent can now call **the site's own endpoints from inside the page it is signed in to**
 (`http_request`) — one call where reading the answer off the screen took a search box, a wait
 and a results list. There is nothing to configure and nothing new granted: the request is
@@ -121,7 +137,7 @@ labelled in history so you can tell them from work you started by hand. See
 If you run SimpleClaw from source, 0.6 added a **batch command** that takes a list of
 tasks and runs them from one command line — several at a time if you raise the new
 **Settings → General → Runs** limit. See
-[Running many tasks at once](docs/user-guide.md#running-many-tasks-at-once-advanced).
+[Running many tasks at once](docs/user-guide.md#running-more-than-one-task-at-once).
 
 Also in 0.6: model settings start with a **provider you pick by name** — Floxi, OpenAI,
 Anthropic, Google, Qwen, or any OpenAI-compatible server of your own — which fills in that

@@ -10,14 +10,190 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.12.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.13.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.12 — Ask the page's own API, and a supervisor that steps in
+## 0.13 — A plan that can change its mind, and more than one run at a time
 
 *Current release.*
+
+**A plan step that keeps failing is no longer asserted for the rest of the run.** A plan is
+written before the first click, from demonstrations of a task that is never quite this one, so
+some of its steps are wrong on the day. Until now nothing in a run could revise one: the guards
+could break a repetition and the supervisor could suggest one better move, but the checklist
+went on presenting the same wrong instruction every turn and the run walked back into it — on
+one measured run, twelve turns alternating between "Click the blue star icon in the top" and
+cancelling the dialog it opened. A run that is **detectably** stuck on one step now **rewrites
+the remaining plan from the screen in front of it** and carries on. Finished steps are kept,
+the abandoned one stays visible and marked failed, and the correction lasts — this is the
+difference from the Observer's repair, which is worth exactly one turn.
+→ [When the plan turns out to be wrong](user-guide.md#when-the-plan-turns-out-to-be-wrong)
+
+**On by default, at three tries and two re-plans.** Both numbers are on **Agents → Planner →
+Planning**, and both are deliberately shy: the second try at a GUI step is often the one that
+works — the page had not finished loading, a dialog was in the way — and a run that keeps
+re-planning is not converging, it is deriving new wrong plans from a screen it cannot read.
+Being stuck is still detected mechanically (screen unchanged, or the same action repeating), so
+a step making visible progress is never counted out, and past the cap the ordinary stuck-run
+recovery takes over.
+
+**The plan has a second level, and it shows which line the run is on.** A plan item's procedure
+used to be a block of numbered text under a single "in progress" heading — six lines, no
+indication which of them had happened. Each line is now its own tracked **sub-step** with its
+own mark: ✓ done, ▸ in progress, ~ skipped as unnecessary, ✕ tried and abandoned, plus a
+**· tried N×** counter from the second attempt onward. The agent reports
+which sub-step each action belongs to, everything before it is counted done automatically, and
+a step it decides is unnecessary is skipped **with the reason attached**. Nothing was asked of
+the planner to make this work — the lines are parsed out of the procedure it already writes, so
+a plan composed months ago, a hand-written one, and one from a custom rubric all get it.
+→ [The plan a run follows](user-guide.md#the-plan-a-run-follows)
+
+**"This work is already done" is now checked by the app, not read off a busy screen.** An item
+can carry an exit condition — *the rating beside the record's id at the top already shows four
+stars* — and asking the Planner to notice it, on a turn whose real business was choosing the
+next click, kept failing the same way: a detail page shows the same **kind** of value in three
+places, and the copy in a side card belongs to a different record. The check is now a step the
+harness takes on its own. It **locates the place the condition names**, crops and magnifies the
+frame to it so the look-alike is not in the picture at all, and then asks two separate
+questions — one call describes what is there **without being told what the answer should be**,
+a second judges that description against the condition. It reads as a shield-marked line in the
+conversation, so a run that stopped early shows its evidence. It can only ever end a run on a
+clear answer: a detector that finds nothing, an endpoint that is down, a reading too thin to
+judge all return nothing and the run proceeds exactly as it would have.
+
+**The workspace runs more than one task at a time.** **⚙ Settings → General → Concurrency**
+governs this whole machine — the window, the control API and the batch command alike. At 1
+(the default) it behaves as it always has and a second task is refused; above 1 the second task
+is **queued** and starts as soon as a slot frees up, and the status bar grows a **run picker**
+listing everything in flight — agent, goal, step count, queue position — so you can switch
+which one the workspace is showing. The workspace still shows **one run at a time**, because a
+live run is a conversation and two interleaved in one thread is unreadable. Takes effect after
+a restart.
+→ [Running more than one task at once](user-guide.md#running-more-than-one-task-at-once)
+
+**One agent, several signed-in browsers.** How much of that total a single agent may claim is
+its own **Max parallel slots** (**Agents → Scope → Headless browser**, up to 4). Each slot is a
+whole browser profile, because Chrome allows one browser per profile — which is why two tasks
+for one agent used to queue behind each other no matter what the machine could afford. Slot 2
+and up are **copied from the first slot** the first time they are needed, so they start out
+signed in; afterwards each holds its own session. Desktop- and window-scope agents are still
+held to one at a time whatever the setting says: there is one physical screen and one cursor.
+
+**The run clock starts when you asked, not when the run did.** Planning a task — splitting it,
+picking the demonstrations, composing the items — is regularly longer than the run's first few
+steps, and you waited through all of it. The live meter now measures from the moment the task
+was submitted, which is what the saved run's own history row always measured, so a run's clock
+and its history entry finally agree. The conversation also **follows the live tail**: each
+arriving step is selected as well as scrolled to, so the screenshot and detail panes beside it
+show the step you are looking at. Selecting an earlier step by hand pauses the following, and
+selecting the newest one resumes it.
+
+**A tab that is lit is not a tab that has loaded.** Clicking a tab inside a record — a panel
+that must be **fetched** before it appears — was reported as "same page", so the run waited
+only for something to move (the tab's own highlight, 30 ms) and was handed a screenshot of the
+new tab lit over the **previous** panel's content. Calling it a page switch is not the fix
+either: a panel swap moves about 13% of the frame against the 35% a page switch waits for, so
+the run would burn its whole navigation budget and still be shown the stale screen. There is a
+third answer now — the Planner says **tab-switch** for a click that swaps a panel inside the
+page, and the run waits on the panel, not on the page. Measured on the run that motivated it:
+447 ms over a stale panel before, 3.4 s and the right screen after.
+
+**A page is asked whether it is still loading.** Alongside the frame comparison, the run counts
+the page's own outstanding fetches and waits for them to drain — with a ten-second age limit, so
+a site holding a stream or a long-poll open forever is not mistaken for one that never finishes
+loading. This is what handles the sites with no spinner, where "the screen stopped changing" was
+already true because the old page had never left.
+
+**Clicks land on the thing you meant.**
+
+- **A wrapped link is hit, not the gap beside it.** A link that wraps across two lines leaves
+  empty space at the end of the first line, and a click aimed there passed through to the page
+  behind. A click that lands on nothing now snaps to the actionable element within a few pixels,
+  and the trace says what it snapped onto.
+- **A submit button stopped being described as a text field.** "Change this record" was read as
+  "this is somewhere to type", so a **WRITE COMMENT** button was located as *"WRITE COMMENT
+  button at the bottom right input"*. The Planner now says what the target **is** — button,
+  link, icon or text — separately from what pressing it achieves.
+- **A native dropdown offers what it actually contains.** When the focused control is a
+  `<select>`, its real options are listed to the agent, and it picks one by typing its name.
+  A browser draws that list **outside** the page, so a click aimed at a row in it passes straight
+  through and only closes the list — which is why an agent trying to click one could never
+  finish. Options beyond the first 40 are counted rather than listed.
+- **A stray text selection is cleared** before the next action, so a drag that ended up
+  highlighting half a paragraph does not steer the click after it.
+
+**Web APIs: the response pane became a reader.** It was pretty-printed text in a box, which is
+not what anyone does with a response all day. JSON now renders as a **foldable tree** where
+every folded node states its size — folding that hides the count hides the thing you were
+looking for — and a string that is *itself* JSON gets an **as JSON** button, because that is
+the shape real APIs return. A **format picker** (JSON, XML, HTML, YAML, JavaScript, Markdown,
+Raw) defaults to the `Content-Type` and falls back to sniffing the body, since plenty of APIs
+answer `text/plain` for JSON. **Ctrl+F** searches with a match count, next/previous and
+wrap-around — and it searches **inside the tree**, expanding what it needs to, because a search
+reporting twelve results while showing none is worse than one reporting none. **Copy** and
+**Save** write the body **as displayed**, and Save names the file after the request and extends
+it from the format on screen. **Clear** drops the result only; the request, its draft and its
+captured values are untouched.
+→ [Reading the response](web-apis.md#reading-the-response)
+
+**GraphQL requests, and panes you can resize.** A **GraphQL** body mode with two boxes, sent as
+`{"query": …, "variables": …}` — blank variables are **omitted** rather than sent as `{}`, which
+some servers reject. Variables stay text until Send, because a syntax error in JSON you are
+halfway through typing is not an error worth interrupting you with; at Send it is reported as
+one. Postman's `graphql` mode imports with both fields intact. The request/response split and
+the query/variables split are draggable and remember where you put them.
+
+**A collection can be organised without leaving the app.** The tree was read-only: requests
+arrived by Postman import or `git clone`, and anything structural meant editing files by hand.
+Now — **add a request**, rename in place, delete behind a confirmation that counts what goes
+with it, create and delete collections, and **folders** to any depth with add, rename, delete,
+duplicate and copy/paste. **Drag and drop** reorders among siblings, moves into folders and
+crosses collections. Within a collection a move is a real **rename on disk**, so git records the
+subtree as moved rather than as a delete plus an add, and a pasted request or folder gets **new
+ids** — a paste that reused them would move the original instead of copying it. **Workspaces**
+are created by name rather than by pointing a folder picker at an empty directory and trusting
+it to be scaffolded, and both *remove from list* and *delete the folder* are reachable from the
+sidebar.
+→ [Organising a collection](web-apis.md#organising-a-collection)
+
+**Fixed in Web APIs:** unsaved edits to a request survived only until you clicked another
+request — the editor was keyed by request id, so switching unmounted it and took your typing
+with it, silently and permanently. Drafts now live in the page, one per request. **Copy did
+nothing at all** (the clipboard API is denied to this window, and the failure went to an
+unhandled promise); it now copies, and says so when it can't. Saving no longer makes the page
+jump while the sync bar re-reads `git status`, a failed tree write reports into the error banner
+instead of looking like a button that was never wired up, and moving a folder beside a
+same-named sibling no longer renames onto it.
+
+**Also in this release**
+
+- **Lossless screenshots, optionally.** **Agents → Scope → Capturing → Lossless screenshots
+  (PNG)** turns off JPEG's chroma subsampling, which halves the resolution of colour exactly
+  where the edges of coloured text live — links, nav bars, status chips. On a dense business UI
+  that is 43.6 dB against 46.1 dB measured on the frame the model receives. **Vision tokens are
+  unchanged**, since they follow the image's pixel dimensions and not its file size; the cost is
+  storage, roughly 2× per frame. Off by default.
+- **Switching scope is a deliberate press.** The Scope tab's four pages used to *be* the
+  setting, so tabbing over to look at the headless-browser options moved the agent onto them.
+  A ✓ badge marks the surface that is live, the other pages say they are a preview, and
+  **Apply** is what moves the agent.
+- **A plan's missing values are asked for the way the app labels them** — *Record ID*, not
+  `record_id` — and only things a person would actually type: a save or a confirmation the
+  agent should carry out is written into the procedure instead of being asked of you.
+- **Opening the running run from History no longer freezes its plan.** The saved snapshot
+  shadowed the live plan for the rest of the run.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.13.0** | Mid-run re-planning, plan sub-steps, the exit-condition check, machine-wide concurrency with per-agent browser slots, `tab-switch` waiting and the page-busy probe, click snapping and native dropdowns, PNG capture, and the Web APIs response viewer and collection editing. |
+
+---
+
+## 0.12 — Ask the page's own API, and a supervisor that steps in
 
 **An agent can ask the site it is on for an answer, instead of clicking five screens to
 read one.** A browser-scope run gets **`http_request`**: give it a path
@@ -453,7 +629,7 @@ expanded. Filter by agent, by tasks vs. scenarios, or by when.
 command** takes a list of goals (or a text file, one per line) and works through it, up to N
 at a time, each task in its own process with its own browser. Tasks sharing a signed-in
 agent still queue behind each other, and agents that drive your real screen never run in
-parallel. → [Running many tasks at once](user-guide.md#running-many-tasks-at-once-advanced)
+parallel. → [Running many tasks at once](user-guide.md#running-more-than-one-task-at-once)
 
 **Pick your model provider by name.** The endpoint editor now starts with a provider —
 Floxi, OpenAI, Anthropic, Google, Qwen, or Custom for anything else OpenAI-compatible —

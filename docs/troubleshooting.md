@@ -22,6 +22,10 @@ Quick fixes for the most common issues.
 | The next screenshot shows the *old* page after a click | Raise **Nav settle** so the page has time to load before the model looks again. |
 | It keeps repeating the same click and never gets past a screen | The run already breaks the loop by itself, but it can only tell the agent to try something else — not *why* the element isn't there. Switch the **Observer** on for that agent (0.12 and later): when the guards catch a stall, the run waits for it to say what is actually on screen and which different move to make. See [When a run gets stuck](user-guide.md#when-a-run-gets-stuck-the-observer). |
 | It reported success but nothing changed | Same answer: with the Observer on (0.12+), a `finished()` is checked against the screen first and sent back for one more turn if the goal isn't visibly done — once per run. Without it, the agent's own claim is final. |
+| It keeps re-attempting one line of the plan | From 0.13 that's what **re-planning** is for: after three tries at the same sub-step — and only when the run is also detectably stuck — the agent rewrites the rest of the plan from the screen in front of it. It's on by default; check **Agents → Planner → Planning** if it isn't. The plan panel marks the abandoned step ✕ with its note, and shows a `· tried N×` counter on a step that is currently struggling. See [When the plan turns out to be wrong](user-guide.md#when-the-plan-turns-out-to-be-wrong). |
+| It redid work that was already done | The item's **exit condition** is what prevents that, and from 0.13 SimpleClaw checks it itself — locating the place the condition names and magnifying it — rather than hoping the model notices. It needs the condition to say **where** the value is read: *"the rating beside the record's id at the top of its detail page"*, not *"this record is already rated"*. A detail page usually shows the same kind of value in a side card belonging to a different record, which is exactly what a vaguely worded condition matches. |
+| A click on a tab shows the *previous* tab's contents | Fixed in 0.13 — a tab whose panel has to be fetched is now waited on as a **tab-switch**, and the run also waits for the page's own outstanding requests. If it persists on a very slow site, raise **Nav settle** on the agent's Executor tab. |
+| It clicks an option in a dropdown and the list just closes | A browser draws a native `<select>` list **outside** the page, so a click aimed at a row passes straight through it. From 0.13 the run reads the real options out of the focused dropdown, hands them to the agent, and it picks one by typing the name. Nothing to configure. |
 | It reports a column or value as *missing* from a wide table | Those columns are past the table's right edge, and it reaches them by scrolling sideways (0.10.1 and later — older builds only ever scrolled up and down). If it still can't, the pane is too narrow to make progress: widen the window, or give a headless-browser agent a wider **viewport** on the Scope tab. |
 
 ## Platform-specific
@@ -84,16 +88,19 @@ For tasks set to run later or on a repeat
 | It reacts to speech that wasn't meant for it | Turn on **Commands only**, which drops utterances that aren't instructions, and/or **Owner voice only** after enrolling your voice. Both cost a little latency per utterance. |
 | A window pointed at a server can't start listening | Correct — a microphone belongs to the machine doing the listening. You can edit that server's voice settings, but its listener starts there. |
 
-## Running many tasks at once
+## Running more than one task at once
 
-For the batch command
-([user guide](user-guide.md#running-many-tasks-at-once-advanced)). It ships with the
-**source repo only** — there's no batch command in the installed app.
+For the machine-wide concurrency setting and the batch command
+([user guide](user-guide.md#running-more-than-one-task-at-once)). The batch command ships with
+the **source repo only** — there's no batch command in the installed app.
 
 | Symptom | Likely cause / fix |
 |---------|--------------------|
 | `npm run batch` isn't recognised | You're in an installed copy, not a source checkout. The batch command lives in the SimpleClaw source tree; the `.exe`/`.dmg`/`.AppImage` doesn't include it. |
-| I raised **Runs** but tasks still go one at a time | Three things override the number: tasks sharing one browser agent (one saved profile, so they queue), agents that work on your **real screen** (they'd fight over one mouse), and passing `--parallel 1`. The startup line prints the limit actually in force. |
+| I raised **Concurrency** and the app still refuses a second task | It **takes effect after a restart** (0.13). Quit SimpleClaw and open it again. |
+| Two tasks for the same agent still queue | One agent means one browser profile unless you say otherwise. Raise that agent's **Max parallel slots** (**Scope → Headless browser**) — each slot is a separate profile, copied from the first one so it starts out signed in. |
+| A desktop- or window-scope agent never runs in parallel | By design, whatever the setting says: there is one physical screen and one mouse. |
+| I raised **Runs** but tasks still go one at a time | Three things override the number: tasks sharing one profile slot (Chrome locks a profile, so they queue), agents that work on your **real screen** (they'd fight over one mouse), and passing `--parallel 1`. The startup line prints the limit actually in force. |
 | Nothing ran and it listed problems instead | The whole list is validated first, deliberately. Fix every line it names — usually a misspelled agent, an agent still in **Dry run**, or a real-screen agent without `--allow-desktop`. |
 | A task ended with "paused for input with nobody to answer" | The agent stopped to ask a question mid-run and no one was there. Batch only suits tasks you've already watched succeed unattended; make the goal specific enough that it doesn't need to ask. |
 | One task timed out at the same number of minutes every time | That's `--timeout` doing its job. Either the goal is too big for the limit or the agent is stuck in a loop — open the run in **Run history** and read the steps before raising it. |
