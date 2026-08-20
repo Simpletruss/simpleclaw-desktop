@@ -95,10 +95,10 @@ locally to get started — you only need a key for it.
 
 ## 4. Optional — run it on a website instead of your screen
 
-If your task lives in a web app, an agent can work in its **own headless browser**
+If your task lives in a web app, an agent can work in its **own sealed browser**
 rather than on your real desktop — in the background, without touching your mouse.
 
-1. Open the agent's **Scope** tab and choose **Headless browser**.
+1. Open the agent's **Scope** tab and choose **Sealed browser**.
 2. Enter the **start URL**. The agent is sealed to that site.
 3. If the site needs a login, press **🔓 Log in once…**, sign in by hand in the
    window that opens (2FA included), then close it. Later runs start signed in.
@@ -157,7 +157,7 @@ Releases page as the installers, extract it, and `docker compose up -d`. Docker 
 prerequisite.
 
 This is for the case where another system should be able to hand it work with no person and
-no laptop involved. Two constraints shape it: only **headless-browser** agents run there (a
+no laptop involved. Two constraints shape it: only **sealed-browser** agents run there (a
 container has no desktop), and the agent signs in on every run from credentials you supply
 rather than from a saved profile.
 

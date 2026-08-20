@@ -450,6 +450,26 @@
 
     <div class="card">
       <div class="ic-row">
+        <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M2.5 9h19"/><circle cx="5.5" cy="6.5" r=".6"/><circle cx="7.6" cy="6.5" r=".6"/><path d="M10 6.5h9"/></svg></div>
+        <span class="tag">New in 0.14</span>
+      </div>
+      <h3>A real browser window, sealed to one site</h3>
+      <p>The browser scope can now be a real Chrome window on a deployment&rsquo;s own display &mdash; so the agent can use the address bar, a download, or the file picker an upload opens, and its clicks are real system events rather than injected ones.</p>
+      <a class="more" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md#the-driver-headless-or-a-real-window">Headless, or a real window</a>
+    </div>
+
+    <div class="card">
+      <div class="ic-row">
+        <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/><path d="M19.5 4.5 21 3"/></svg></div>
+        <span class="tag">New in 0.14</span>
+      </div>
+      <h3>It waits for the app to finish</h3>
+      <p>The agent says how long to let a click or a page load work before it looks again &mdash; a quarter-second for a checkbox, seconds for a save that goes over the network &mdash; so it stops reading half-drawn screens. A before/after toggle shows what each action produced.</p>
+      <a class="more" href="https://github.com/Simpletruss/simpleclaw-desktop/blob/main/docs/user-guide.md#what-the-agent-declares-with-each-action">What each action declares</a>
+    </div>
+
+    <div class="card">
+      <div class="ic-row">
         <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6"/><path d="M4 12h6"/><path d="M4 18h6"/><path d="M13.5 6.5 15 8l3-3.5"/><path d="M13.5 12.5 15 14l3-3.5"/><path d="M14 17l4 4"/><path d="M18 17l-4 4"/></svg></div>
         <span class="tag">New in 0.13</span>
       </div>
@@ -516,7 +536,7 @@
   <p class="sub">Every task runs as a loop of small, visible steps you can watch and stop.</p>
   <div class="flow">
     <div class="step"><h4>You set a goal</h4><p>Type what you want done and press Run.</p></div>
-    <div class="step"><h4>It sees the screen</h4><p>SimpleClaw captures the agent’s surface — a monitor, one window, or its own headless browser.</p></div>
+    <div class="step"><h4>It sees the screen</h4><p>SimpleClaw captures the agent’s surface — a monitor, one window, or its own sealed browser.</p></div>
     <div class="step"><h4>The model decides</h4><p>The AI picks the single next action.</p></div>
     <div class="step"><h4>It acts &amp; repeats</h4><p>The action runs, then the loop continues until finished.</p></div>
   </div>

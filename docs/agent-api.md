@@ -422,7 +422,7 @@ never taught here, so the fix is to record a demonstration, not to try again.
   these two clients do you mean?"*), the run pauses and the question is on the stream.
   Answer it, or stop the run. A pause nobody answers within ten minutes is stopped.
 - **A human can still take over.** During a
-  [headless-browser](user-guide.md#taking-control-mid-run) run the person at the machine can
+  [sealed-browser](user-guide.md#taking-control-mid-run) run the person at the machine can
   take the controls — or, on a server, anyone holding the run's live link. The run continues
   when they hand it back.
 - **The window is a monitor, not a lock.** In the desktop app, a run submitted this way
@@ -465,7 +465,7 @@ machine.
   the organization currently active, and it cannot set an agent's start URL, scope, or
   sign-in. Where an agent may work stays a decision you make in SimpleClaw — which matters,
   because site sealing is a
-  [backstop, not a sandbox](safety-and-privacy.md#headless-browser-agents).
+  [backstop, not a sandbox](safety-and-privacy.md#sealed-browser-agents).
 - **Everything else still applies.** `F9` stops a run whoever submitted it. Dry run, step
   delay, and max steps are the agent's settings, not the caller's.
 

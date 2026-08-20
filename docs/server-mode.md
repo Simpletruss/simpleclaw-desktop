@@ -39,15 +39,16 @@ the environment instead of a settings screen.
 9. [Letting the desktop app reach it](#letting-the-desktop-app-reach-it)
 10. [Configuration](#configuration)
 11. [Running more than one run at a time](#running-more-than-one-run-at-a-time)
-12. [Signing in without a person](#signing-in-without-a-person)
-13. [Signing in by hand, on a machine with no screen](#signing-in-by-hand-on-a-machine-with-no-screen)
-14. [Authentication](#authentication)
-15. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
-16. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
-17. [Running it somewhere real](#running-it-somewhere-real)
-18. [Security](#security)
-19. [Upgrading](#upgrading)
-20. [Limits](#limits)
+12. [The native browser driver](#the-native-browser-driver)
+13. [Signing in without a person](#signing-in-without-a-person)
+14. [Signing in by hand, on a machine with no screen](#signing-in-by-hand-on-a-machine-with-no-screen)
+15. [Authentication](#authentication)
+16. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
+17. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
+18. [Running it somewhere real](#running-it-somewhere-real)
+19. [Security](#security)
+20. [Upgrading](#upgrading)
+21. [Limits](#limits)
 
 ---
 
@@ -76,7 +77,7 @@ server is doing. See [Pointing it at a server](user-guide.md#pointing-it-at-a-se
 
 - **Docker**, with Compose. Nothing else — no Node toolchain and no source checkout. The
   bundle carries the compiled application and a Dockerfile that only assembles it.
-- **A headless-browser agent that already works.** Build and test it in the desktop app
+- **A sealed-browser agent that already works.** Build and test it in the desktop app
   first. Server mode runs agents; it can't teach them.
 - **Somewhere to keep secrets.** The model API key and any sign-in credentials come from the
   environment, not from files on a share.
@@ -86,13 +87,13 @@ and Electron, which are not in the bundle.
 
 ## What changes in server mode
 
-**Only headless-browser agents run.** There is no desktop in a container, so a
+**Only sealed-browser agents run.** There is no desktop in a container, so a
 desktop-scope or window-scope agent is refused three separate ways: greyed out in
 `GET /v1/capabilities`, a `422` from `POST /v1/runs`, and an error from the scope itself for
 any other route into a run. This is deliberate — the alternative is an agent clicking
 confidently into a blank virtual screen. Set an agent's
-[scope](user-guide.md#where-the-agent-works-scope) to **Headless browser** before deploying
-it.
+[scope](user-guide.md#where-the-agent-works-scope) to **Sealed browser** before deploying
+it. Either [driver](#the-native-browser-driver) is served here *(0.14)*.
 
 **Nothing that assumes a person exists.** No window, no auto-updater, no global `F9`
 shortcut. These aren't disabled behind a flag; the headless entry point simply never calls
@@ -307,7 +308,7 @@ Four rules worth knowing before you rely on it:
 - **`supported` in the response is the thing to read.** It answers *can this server actually
   run what you just sent* — a desktop-scope agent uploads fine and then can't run, because a
   container has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to
-  **Headless browser** first. A scenario upload likewise names any agents it needs that aren't
+  **Sealed browser** first. A scenario upload likewise names any agents it needs that aren't
   there yet.
 
 An executor is allowed to boot with **no agents at all** — that's its normal first state, and
@@ -432,6 +433,7 @@ variables. Nothing set here is written back to disk.
 | **Auth** | `AUTOPLAY_AUTH_MODE` (`static`\|`jwt`), `AUTOPLAY_API_TOKEN`, `AUTOPLAY_JWT_PUBLIC_KEY`, `AUTOPLAY_JWT_ISSUER`, `AUTOPLAY_JWT_AUDIENCE`, `AUTOPLAY_JWT_ALGS`, `AUTOPLAY_JWT_LEEWAY_S`, `AUTOPLAY_JWT_ORG_CLAIM`, `AUTOPLAY_RUN_OWNERSHIP` |
 | **Model** | `AUTOPLAY_MODEL_{PROVIDER,BASE_URL,API_KEY,MODEL}`, plus `AUTOPLAY_SYSTEM_MODEL_*` and `AUTOPLAY_DETECTOR_MODEL_*`, which fall back to it field by field |
 | **Browser** | `AUTOPLAY_BROWSER_PATH`, `AUTOPLAY_BROWSER_EXTRA_ARGS`, `AUTOPLAY_BROWSER_KEEPALIVE_MS`, `AUTOPLAY_ALLOW_DESKTOP_SCOPE` |
+| **Display** *(0.14)* | `AUTOPLAY_NO_WM` (`1` skips the window manager), `AUTOPLAY_VNC` (`1` opens a remote view), `AUTOPLAY_VNC_PASSWORD` (**required** with it), `AUTOPLAY_VNC_PORT` (5900) — see [The native browser driver](#the-native-browser-driver) |
 | **Credentials** | `AUTOPLAY_SECRET_<NAME>` — see [below](#signing-in-without-a-person) |
 | **Retention** | `AUTOPLAY_HISTORY_IMAGE_DAYS` (7), `AUTOPLAY_HISTORY_DAYS` (30), `AUTOPLAY_HISTORY_MAX_MB` (2048) |
 | **Storage** | `AUTOPLAY_STORE` (`file`\|`mongo`), `AUTOPLAY_MONGO_URI`, `AUTOPLAY_MONGO_DB`, `AUTOPLAY_FUNCTION_CACHE_DIR` |
@@ -467,7 +469,7 @@ to empty local storage that would pass its readiness probe and serve an empty ag
 *New in 0.11.2.* An executor runs **two tasks at once by default**
 (`AUTOPLAY_MAX_CONCURRENT_RUNS`, `1` for one at a time). Above `1` a run doesn't execute in
 the process answering the API at all: it goes to a **worker process** pinned to its agent,
-each with its own headless Chrome. That's what makes it safe rather than merely parallel —
+each with its own Chrome. That's what makes it safe rather than merely parallel —
 the capture scope and the browser operator are one-per-process by construction, so no two
 runs can reach the same browser.
 
@@ -492,6 +494,61 @@ of closing it — which lost the sign-in it was holding)*.
 **Schedules are still a reason to run one replica.** Concurrency is within an instance;
 schedule entries live in the data directory, so N replicas sharing one still each arm the
 same timers.
+
+## The native browser driver
+
+*New in 0.14.* A [sealed-browser agent](user-guide.md#the-driver-headless-or-a-real-window) can
+be set to **Driver: Native window** instead of the default headless one. This is the only kind
+of executor that can serve it, and no configuration is needed to make it work — the container
+already has what it needs.
+
+**Why only here.** The native driver puts a real Chrome window on a display and drives it with
+the operating system's own pointer and keyboard. The desktop app has no display to give it: the
+only screen there belongs to the person sitting at it, and seizing that is precisely what
+sealed-browser scope exists to avoid. A container runs its own virtual display (Xvfb), so
+there is nothing to take over.
+
+**What the image adds for it.** Xvfb alone is an X *server*, not a desktop — with no window
+manager a window has no title bar, is never placed or focused, and every dialog opens stacked in
+the corner, which is not a screen any person has ever seen and not what a vision model should be
+asked to read. So the image now also carries **openbox** (a minimal window manager, started for
+every container at about 6 MB resident), **autocutsel** (an owner for the X selections, without
+which a copied value stops existing the moment the tab that made it closes, and a later paste
+produces nothing with no error anywhere), **CJK fonts**, and **x11vnc**, which stays idle unless
+you switch it on. `AUTOPLAY_NO_WM=1` opts out of the window manager; a container whose window
+manager failed to start still serves headless-driver agents perfectly, and says so in its log
+rather than refusing to boot.
+
+**Watching one, or taking it over.** [Take control](user-guide.md#taking-control-mid-run) works
+as it does everywhere else and shows you the whole screen rather than just the page, which is
+usually the point — a file picker or an address bar is what needed a human. For debugging the
+container itself there is also a VNC view:
+
+```bash
+AUTOPLAY_VNC=1
+AUTOPLAY_VNC_PASSWORD=<a real password>   # required; without it VNC refuses to start
+AUTOPLAY_VNC_PORT=5900                    # default
+```
+
+**The password is not optional and the reason matters.** x11vnc binds every interface — it has
+to, or a published port could never reach it — so starting it without one would put an
+unauthenticated, fully interactive view of this container's screen, logged into whatever the
+agent is logged into, on the network. The VNC password scheme is also DES-based and weak by
+modern standards. Treat this as a development aid over a trusted network or an SSH/`kubectl`
+port-forward, never as a public endpoint, and leave it off in production.
+
+**One display, so one native run at a time.** An X display has a single pointer and a single
+keyboard focus, so two native-driver runs cannot share one. Concurrency above 1 still runs
+headless-driver agents in parallel as before; for native work, run one native task per container
+(or one container per parallel native run) and expect it to be slower than headless — a real
+window has to be drawn, and elements are found by looking rather than through the page's
+structure.
+
+**An executor that can't serve it says so.** If the display is missing, the platform isn't
+Linux, or the session is Wayland (where the screen cannot be read at all), the agent is listed
+as **unsupported with that specific reason** and a run submitted anyway is refused before it
+starts. It never silently falls back to the headless driver, which would leave you with a run
+that behaves unlike the agent you deployed.
 
 ## Signing in without a person
 
@@ -696,7 +753,7 @@ agents' authority**, reachable by whatever can reach the port.
   rate limiting, WAF, or DDoS protection.
 - **A signed-in agent is the sharp edge.** A caller can drive it with the full authority of
   whatever account it uses on that site — see
-  [headless-browser agents](safety-and-privacy.md#headless-browser-agents). Give those
+  [sealed-browser agents](safety-and-privacy.md#sealed-browser-agents). Give those
   accounts the least access that does the job.
 - **A caller still can't widen an agent's reach.** It may only name agents that already
   exist, in the active organization, and it can't set a start URL, a scope, or a sign-in.

@@ -10,14 +10,91 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.13.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.14.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.13 — A plan that can change its mind, and more than one run at a time
+## 0.14 — A real browser window, and a wait the Planner names
 
 *Current release.*
+
+**Browser scope is now called *Sealed browser*, and it can be a real window.** The name changed
+because "headless" described the *mechanism* and the seal is the point: one Chrome, one origin,
+its own signed-in profile, navigation off-site bounced back. What is new underneath is a
+**Driver** choice on that tab. **Headless (CDP)** is the default and is exactly what browser
+scope has always been — the page is captured from the renderer, clicks are injected over the
+DevTools protocol, nothing on your screen moves. **Native window** runs the same sealed Chrome
+*with a window*, on a display the executor owns: pixels come off the framebuffer and input goes
+through the operating system.
+→ [The driver: headless, or a real window](user-guide.md#the-driver-headless-or-a-real-window)
+
+**What that buys is everything outside the page.** Under the native driver the model sees the
+whole browser — address bar, tab strip, download shelf — and the things that are not web content
+at all and that the DevTools protocol cannot reach: the OS file picker an upload opens, a print
+dialog, `alert()`. Its clicks and keystrokes are real X events, so a page receives them with
+`isTrusted` set exactly as it would from a person, and a site that gates on that stops treating
+the agent as a script. The prompt follows the driver: under the headless driver the agent is
+told there is no address bar and `open_url` is the only way to reach an address, and under the
+native driver it is not told that, because there plainly is one in front of it.
+
+**It costs a display, and where there isn't one the run is refused rather than downgraded.** An
+X display has one pointer and one keyboard focus, so two native runs cannot share it — and the
+only display the desktop app has belongs to the person sitting at it, which is the one thing
+sealed-browser scope exists in order not to touch. So the native driver is served **only by an
+executor running its own virtual display** (the container does, and now ships a window manager
+and a clipboard owner so a window has a title bar, gets placed, and a copy outlives the tab that
+made it). Anywhere it cannot be served, the agent is reported **unsupported with the specific
+reason** and the run never starts — no silent fall back to headless, which would produce a run
+that behaves unlike the agent that was configured and nothing downstream that could tell.
+→ [The native driver on a deployment](server-mode.md#the-native-browser-driver)
+
+**The agent now says how long to let the app work before it looks again.** Every wait the run
+already had was a *ceiling* that returns the moment its own condition holds — did anything move,
+has it stopped moving, does the page report itself loaded — and on an app that acknowledges a
+click before it has anything to show, the honest answer to all of them is "immediately". A
+measured run shows both failure modes: a click that "reacted after 56ms" and "settled after
+196ms" handed over a frame of an app that was still drawing, and an SPA navigation reported ready
+within ~100ms because `readyState` completes in a beat, the in-flight request counter cannot see
+what an *iframe* fetches, and the site's spinners carry no `aria-busy`. Neither the pixels nor
+the page can answer this. The Planner can: it knows what it just clicked. So it now declares a
+**`wait`** with every click, double-click and `open_url` — 250ms for a checkbox or a dropdown,
+2–5 seconds for a save that goes over the network or a panel whose contents are fetched, up to 15
+for a page it has seen be slow — and if your goal text says how long something takes, it uses
+that number.
+→ [What the agent declares with each action](user-guide.md#what-the-agent-declares-with-each-action)
+
+**No answer it can give is unsafe.** The declaration is a **floor measured from the moment the
+action fired**, not a sleep bolted on the end: a click that already spent fifteen seconds in the
+page-switch wait pays nothing extra, and a declaration under what the settles already spent is
+free. 250ms is the minimum and the default, applied to the clicking verbs and navigations whether
+or not anything was declared — a scroll or a hotkey still pays nothing, since its result is on
+screen the moment it stops. The ceiling is the agent's own **Nav settle**, so the knob that
+already meant "the longest this run will wait on one action" governs this too. And the repeat
+guard **ignores** the field: being more patient about a click is not a different click, so 250 →
+1000 → 3000 on the same dead button still trips the loop breaker.
+
+**Before and after, in the screenshot pane.** A step card shows the frame its Planner *reasoned
+over*, which is always the picture from **before** its action — so a step whose click took five
+seconds to land read as "the click did nothing", while the frame proving otherwise sat one card
+further down. The pane now has a **before / after** toggle. "After" is not a new capture: it is
+the next step's frame, which the loop takes once the settles and the declared `wait` are done, so
+it is precisely what the harness handed the model — and it is labelled with the gap between the
+two (`+5.0s after the action`). The aim marker is hidden on the after frame, because those
+coordinates describe where the click was pointed on the *old* screen. The toggle hides itself on
+a step with no successor and says so when a successor's frame is still streaming in.
+
+**Smaller things.** The scope an agent runs on is named the same way everywhere — the roster
+cards and the New-task agent picker used to print the raw mode (`browser scope`) beside a tab a
+person had just set to *Sealed browser*. The **User-Agent override** field is shown for the
+headless driver only, since its whole purpose is the `HeadlessChrome` token a real window never
+sends. The curated model lists dropped `qwen3.8-27b`. And the dev container's CORS default now
+includes the desktop app's own origin, which is what a "could not be reached" with nothing in the
+container's log was.
+
+---
+
+## 0.13 — A plan that can change its mind, and more than one run at a time
 
 **A plan step that keeps failing is no longer asserted for the rest of the run.** A plan is
 written before the first click, from demonstrations of a task that is never quite this one, so

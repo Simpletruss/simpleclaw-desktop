@@ -37,7 +37,22 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.13 — the plan can change its mind, and the app runs more than one task.** A run
+**New in 0.14 — a real browser window, and a wait it decides for itself.** The browser scope is
+now called **Sealed browser**, and it no longer has to be invisible: on a deployment with a
+display of its own it can drive a **real Chrome window**, where the agent sees the address bar,
+the tabs and the download shelf, deals with the operating system's own file picker and dialogs —
+none of which a headless browser can reach at all — and clicks with real system events rather
+than injected ones. Headless stays the default and is still the right choice for work that
+happens inside a page. Separately, the agent now **declares how long to let the app work** before
+its next screenshot: 250ms for a checkbox, seconds for a save that goes over the network, and the
+number in your goal text if you gave one — so a form that reports itself ready and then fetches
+everything is no longer read half-drawn. The screenshot pane gained a **before / after** toggle
+to show what an action actually produced. See
+[The driver: headless, or a real window](docs/user-guide.md#the-driver-headless-or-a-real-window),
+[What the agent declares with each action](docs/user-guide.md#what-the-agent-declares-with-each-action)
+and [Release notes](docs/release-notes.md).
+
+**From 0.13 — the plan can change its mind, and the app runs more than one task.** A run
 follows a plan composed from that agent's own demonstrations, and every numbered line of it is
 now tracked as its own **sub-step**, so you can see which line a run is on and how many times it
 has tried. When one of those lines turns out to be wrong — the button opens a different dialog,
@@ -123,7 +138,7 @@ ships as a **deployment bundle** on the [Releases page](https://github.com/Simpl
 (`simpleclaw-server-<version>-docker.tar.gz`): extract it, `docker compose up -d`, and Docker
 is the only prerequisite. Another system
 hands it work over the network, follows each step live, and reads the answer back. Only
-[headless-browser](docs/user-guide.md#where-the-agent-works-scope) agents run there (a
+[sealed-browser](docs/user-guide.md#where-the-agent-works-scope) agents run there (a
 container has no desktop), and they sign in each run from credentials the platform injects
 rather than from a saved profile. See [Server mode](docs/server-mode.md).
 
@@ -152,7 +167,7 @@ That's the missing half for systems with no usable API — the agent plans, Simp
 operates. See [Agent API](docs/agent-api.md).
 
 **From 0.3 — it can also work off-screen.** Point an agent at a website and it runs
-in its own **headless browser**, sealed to that site: nothing touches your screen or
+in its own **sealed browser**, headless by default: nothing touches your screen or
 mouse, so you keep working while the task runs. Sign in to it **once by hand** and
 later runs start already signed in — and you can **take the controls** yourself
 mid-run whenever a step needs a human (a login, a 2FA code, or an agent that's stuck).
@@ -208,7 +223,7 @@ On every loop the model chooses exactly one action:
 - **Dry run (default ON)** — preview actions without executing them.
 - **Emergency stop `F9`** — aborts instantly, even when SimpleClaw isn't focused.
 - **Step delay & max steps** — paced and capped so it can't run away.
-- **Scope** — confine an agent to one window, or to a headless browser sealed to a
+- **Scope** — confine an agent to one window, or to a sealed browser confined to a
   single site, instead of your whole desktop. Note that a browser agent you've signed
   in **acts with your account's authority** on that site.
 
@@ -252,7 +267,7 @@ Also needed:
 - A **vision-capable AI model** reachable at an OpenAI-compatible
   `/v1/chat/completions` endpoint (base URL, API key, model name).
 - **Google Chrome or Microsoft Edge** — only for the
-  [headless-browser scope](docs/user-guide.md#where-the-agent-works-scope). The
+  [sealed-browser scope](docs/user-guide.md#where-the-agent-works-scope). The
   desktop and window scopes don't need it.
 
 Nothing extra is needed for the [Agent API](docs/agent-api.md) — it's built into the app and

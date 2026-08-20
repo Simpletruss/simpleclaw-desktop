@@ -8,7 +8,17 @@
 
 The complete manual for SimpleClaw 0.9 (Windows, macOS, and Linux).
 
-> **New in 0.13:** a run's **plan** stopped being fixed. Each item's procedure is tracked line
+> **New in 0.14:** browser scope is renamed **Sealed browser** and can now be a **real browser
+> window** on an executor with a display of its own — where the model sees the address bar, the
+> tabs, the download shelf and the OS dialogs, and its clicks are real system events. See
+> [The driver: headless, or a real window](#the-driver-headless-or-a-real-window).
+>
+> Also in 0.14: the agent **declares how long to let the app work** before it looks again, so a
+> save that goes over the network is no longer screenshotted mid-flight, and the screenshot pane
+> has a **before / after** toggle. See
+> [What the agent declares with each action](#what-the-agent-declares-with-each-action).
+
+> **From 0.13:** a run's **plan** stopped being fixed. Each item's procedure is tracked line
 > by line, an item that says *"there is nothing to do if…"* is **checked before the work**, and
 > a run stuck on one step **rewrites the rest of its plan from the screen in front of it**. See
 > [The plan a run follows](#the-plan-a-run-follows).
@@ -52,7 +62,8 @@ The complete manual for SimpleClaw 0.9 (Windows, macOS, and Linux).
 > lets another AI agent submit a task in plain language, watch it happen step by step, and
 > take the answer back. See [Letting another agent drive it](#letting-another-agent-drive-it).
 
-> **From 0.3:** an agent can work inside a **headless browser** instead of your
+> **From 0.3:** an agent can work inside a **sealed browser** (called *headless browser*
+> until 0.14) instead of your
 > real screen — in the background, sealed to one site, with its own saved sign-in —
 > and you can **take control** of that browser mid-run when something needs a
 > human. See [Where the agent works](#where-the-agent-works-scope).
@@ -113,7 +124,7 @@ your goal ─► take a screenshot ─► ask the AI model for the next action
 
 1. **You enter a goal** and press Run.
 2. **SimpleClaw captures the agent's surface** as an image — a monitor, a single
-   window, or its own headless browser (see [Scope](#where-the-agent-works-scope)).
+   window, or its own sealed browser (see [Scope](#where-the-agent-works-scope)).
 3. **The image and your goal are sent to the AI model**, which replies with a
    short reasoning ("Thought") and a single next **Action**.
 4. **SimpleClaw performs that action** on your real mouse/keyboard — unless
@@ -127,8 +138,10 @@ your goal ─► take a screenshot ─► ask the AI model for the next action
   button dictates into it instead — see [Talking to it](#talking-to-it-voice).
 - **Dry run toggle** — plan-only vs. act-for-real. On by default.
 - **Screenshot view** — the current capture, with a **marker** showing where the
-  model is about to act. Hover it during a headless-browser run to
-  [take control](#taking-control-mid-run).
+  model is about to act. Hover it during a sealed-browser run to
+  [take control](#taking-control-mid-run). *New in 0.14:* a **before / after** toggle shows
+  what the step's action *produced* as well as what it decided on — see
+  [What the agent declares with each action](#what-the-agent-declares-with-each-action).
 - **Action timeline** — a running list of each step: the model's short reasoning
   and the action it chose.
 - **▶ Play / ↻ Re-run** — replay a finished run's frames, or run the same goal again.
@@ -174,7 +187,7 @@ driving. Dry runs don't get a bar; you're watching the window for those.
 
 **Why the window goes away.** An agent working on your real screen has to have the window
 out of the way — otherwise the window sits under the agent's own clicks — so those runs
-minimize it. A **headless-browser** run started from the window *keeps* the window, because
+minimize it. A **sealed-browser** run started from the window *keeps* the window, because
 that's where the live browser view and [taking control](#taking-control-mid-run) live. A run
 that came from somewhere else — the [Agent API](agent-api.md), or a
 [schedule](#running-a-task-later-scheduling) coming due — minimizes it either way: you were
@@ -502,7 +515,7 @@ command below all draw from it. **It defaults to 1**, which is the behaviour eve
 release had: one task runs and a second is refused. Raise it and a second task is **queued**
 instead, starting the moment a slot frees up. **It takes effect after a restart.**
 
-Each concurrent task is its own process with its own headless Chrome — budget about **0.9 GB
+Each concurrent task is its own process with its own Chrome — budget about **0.9 GB
 each** and raise this only as far as the machine's memory allows (the cap is 8). It is memory
 that bounds this, not CPU.
 
@@ -517,7 +530,7 @@ than whichever one the workspace happens to be focused on.
 
 ### One agent, several browsers
 
-**Agents → Scope → Headless browser → Max parallel slots** is how much of that machine-wide
+**Agents → Scope → Sealed browser → Max parallel slots** is how much of that machine-wide
 total a single agent may claim (up to 4). Each slot is a **whole browser profile**, because
 Chrome allows one browser per profile — which is why two tasks for one agent queued behind each
 other however much the machine could afford.
@@ -646,30 +659,73 @@ its surface instead, once, and every run of that agent uses it:
 |-------|--------------------------------|
 | **Entire desktop** | A whole monitor — your real mouse and keyboard. Pick which monitor if you have several. |
 | **Specific window** | One app window. Screenshots are cropped to it and clicks are offset into it, so the rest of your desktop is out of bounds. |
-| **Headless browser** *(new in 0.3)* | A dedicated browser that runs **offscreen**, sealed to one site. Your screen and mouse are never touched, so you can keep working while the task runs. |
+| **Sealed browser** *(new in 0.3; renamed in 0.14)* | A dedicated Chrome sealed to one site, with its own saved sign-in. **Headless** by default — it runs offscreen, so your screen and mouse are never touched and you can keep working while the task runs. *New in 0.14:* on an executor with a display of its own it can instead be a **real browser window**. |
 
-### Headless browser
+### Sealed browser
+
+*Called **Headless browser** before 0.14 — the name changed because the seal is the point and
+"headless" was only the mechanism. It is now [one of two mechanisms](#the-driver-headless-or-a-real-window).*
 
 Point it at a **start URL** and the agent gets its own browser opened there. Two
-things follow from it being a separate, invisible browser:
+things follow from it being a separate browser that belongs to the agent:
 
-- **It runs in the background.** Nothing moves your cursor and nothing steals focus;
-  you can use your computer normally while a task runs.
 - **It is sealed to that site.** Navigation outside the start URL's origin is sent
   back. If signing in goes through a separate host (an SSO page, say), add that host
   under **Also allow these origins** or the agent will bounce off it.
+- **It has its own sign-in**, kept between runs — [Staying signed in](#staying-signed-in).
 
-Set the **viewport** here too. There is no physical screen, so this size *is* the
-whole surface the agent sees — and bigger is not automatically better: small
+By default it also **runs in the background**: the browser is headless, so nothing moves your
+cursor and nothing steals focus, and you can use your computer normally while a task runs.
+
+Set the **viewport** here too. Under the headless driver there is no physical screen, so this
+size *is* the whole surface the agent sees — and bigger is not automatically better: small
 targets can get harder to hit as resolution rises. 1280×800 is the default and a
-good starting point.
+good starting point. (Under the native driver it sizes the *window* instead, and the browser's
+own title bar, tabs and address bar sit outside that box.)
 
 **Max parallel slots** *(new in 0.13)* is how many of this agent's tasks may run at the same
 time, each in its own browser profile — see
 [One agent, several browsers](#one-agent-several-browsers).
 
+### The driver: headless, or a real window
+
+*New in 0.14.* **Driver** picks how the sealed browser is captured and driven. It changes
+nothing about *what* the agent operates — the same Chrome, the same origin seal, the same
+profile, the same parallel slots either way — only the mechanism.
+
+| | **Headless (CDP)** — the default | **Native window** |
+|---|---|---|
+| Where the picture comes from | The renderer, over the DevTools protocol | The executor's screen, exactly as a desktop-scope agent's does |
+| What the model sees | The **page only** — no address bar, no tabs, no system dialogs | The **whole browser**: address bar, tab strip, download shelf, and the OS dialogs and file pickers that are not web content at all |
+| How it clicks and types | Events injected into the page | Real operating-system input, so a page receives it with `isTrusted` set just as it would from a person |
+| Where it runs | Anywhere — your desktop included | **Only an executor with a display of its own** (a container built with one) |
+| Speed | Faster | Slower; a real window has to be drawn |
+| Locating elements through the page's own structure | Yes — a web page's clickable elements are numbered for it | No; it goes by what is on screen, like a desktop agent |
+
+**Choose the native window when the task leaves the page.** An upload that opens the operating
+system's file picker, a print dialog, a download you have to accept, a plain `alert()`, or a site
+that refuses synthetic input — those live outside the page, where the DevTools protocol cannot
+reach at all. For everything that happens *inside* a page, headless is faster and locates more
+precisely, and it is the right default.
+
+**The native driver needs a display of its own, and won't borrow yours.** An X display has one
+pointer and one keyboard focus, so two native runs cannot share one — each parallel slot needs
+its own display, not just its own profile. And the only display the desktop app has is the one
+you are sitting at; taking that over is exactly what sealed-browser scope exists in order not to
+do. So it is served **only by a deployment running its own virtual display** →
+[The native browser driver](server-mode.md#the-native-browser-driver).
+
+You can still *choose* it in the editor on your desktop, because an agent is authored here and
+deployed elsewhere. What you cannot do is *run* it here: an executor that can't serve it lists
+the agent as **unsupported with the reason**, and a run started anyway is refused before it
+begins rather than quietly falling back to headless — which would give you a run that behaves
+unlike the agent you configured, with nothing anywhere to say so.
+
+The **User-Agent override** field is shown for the headless driver only: its whole purpose is
+the `HeadlessChrome` token, which a real browser window never sends in the first place.
+
 **Switching surface is a press, not a tab** *(0.13)*. The four pages under Scope — Capturing,
-Entire desktop, Specific window, Headless browser — can all be opened and read without changing
+Entire desktop, Specific window, Sealed browser — can all be opened and read without changing
 anything. A **✓** marks the one the agent actually runs on, the others say they are a preview,
 and **Apply** is what moves the agent onto the surface you're looking at.
 
@@ -684,7 +740,7 @@ history size cap sooner. Off by default.
 ### Staying signed in
 
 Most real sites need a login, and an agent cannot know your password. So the
-headless browser keeps **one profile per agent** and you sign in yourself, once:
+sealed browser keeps **one profile per agent** and you sign in yourself, once:
 
 1. On the **Scope** tab, press **🔓 Log in once…**. A **real, visible browser
    window** opens on that agent's own profile.
@@ -714,12 +770,17 @@ Three caveats worth knowing:
 ### Taking control mid-run
 
 Some steps only a human can do: a login you'd rather type yourself, a two-factor
-code, a CAPTCHA, or an agent that's simply stuck. While a headless-browser run is
+code, a CAPTCHA, or an agent that's simply stuck. While a sealed-browser run is
 live, **hover the frame** in the run pane and a **🖐 Take control** button appears.
 
 Pressing it pauses the agent and opens the page **full-window at actual size**, with
 your mouse and keystrokes going straight into it — no crosshair or grid in the way.
 Hand it back with the **Hand back** button or **`Esc`**.
+
+*Under the [native driver](#the-driver-headless-or-a-real-window) (0.14) you are handed the
+whole screen the agent is looking at, not just the page — so the address bar, the tab strip and
+any system dialog are yours to use, which is usually why a native run needed a human in the
+first place.*
 
 Deliberate details:
 
@@ -732,7 +793,7 @@ Deliberate details:
 
 ### Starting up
 
-A headless browser has to launch and load the page before the agent sees anything,
+The browser has to launch and load the page before the agent sees anything,
 which is regularly 10–25 seconds on a cold start. The frame area reports what it's
 doing (starting the browser → waiting for the debugger → opening the page) with a
 seconds counter, so a slow start is distinguishable from a stuck one.
@@ -790,9 +851,9 @@ Reach for it when:
 
 Three things to know before planning around it:
 
-- **Only headless-browser agents run there.** A container has no desktop, so a desktop- or
+- **Only sealed-browser agents run there.** A container has no desktop, so a desktop- or
   window-scope agent is refused rather than allowed to click into a blank screen. Set an
-  agent's [scope](#where-the-agent-works-scope) to a headless browser before deploying it.
+  agent's [scope](#where-the-agent-works-scope) to a sealed browser before deploying it.
 - **Signing in works differently.** There's no persistent Chrome profile to "log in once"
   into, so an agent signs in on every run from credentials the platform supplies — and a site
   demanding MFA or a CAPTCHA still needs a person, who joins through the run's live link and
@@ -930,7 +991,7 @@ below make sense:
 
 ### Calling the site the agent is already on
 
-*New in 0.12. Headless-browser scope only.*
+*New in 0.12. Sealed-browser scope only.*
 
 A browser-scope agent can call its **own** site's endpoints with `http_request`, giving a
 path — `http_request('/api/records/search')` — and reading the response back on the same
@@ -1087,6 +1148,8 @@ and SimpleClaw finds it, checks the spot, and acts, all within the one step.
 SimpleClaw performs exactly one action per loop, so complex tasks complete as a
 sequence of small, visible steps.
 
+### What the agent declares with each action
+
 **Every click says what it will do to the screen, and the run waits for exactly that**
 *(0.11.5; a third answer added in 0.13)*. A **page switch** — a nav entry, a search result, a
 row that opens a record — waits for the whole screen to change. **Same page** — a dropdown, a
@@ -1098,6 +1161,45 @@ contents; it now waits on the panel. Alongside it the run asks the page whether 
 requests outstanding, which is what handles sites with no loading spinner — where "the screen
 stopped changing" was already true because the old page had never left.
 
+**And every click says how long to let the app work** *(new in 0.14)*. Each of the waits above
+is a *ceiling*: it returns the moment its own condition holds. That is the right shape for
+"has the page changed", and it is useless on an app that acknowledges a click before it has
+anything to show — the click registers in 56ms, the screen goes quiet 200ms later, and the
+Planner is handed a picture of a form that is still being drawn. Nor can the page be asked: a
+single-page app reports itself loaded as soon as its shell lands, and the request counter behind
+that answer cannot see what an embedded frame fetches.
+
+So the agent names a number, in milliseconds, with every `click`, `double` and `open_url` —
+because it is the only party that knows what it just pressed:
+
+- **250ms** — the minimum, and the right answer for an ordinary click: a checkbox, a dropdown,
+  focusing a field.
+- **2–5 seconds** — a click whose result arrives over the network with nothing on screen to say
+  so: saving or creating a record, starting a search or a report, opening a panel whose contents
+  are fetched, anything inside an embedded widget. Also the right range for navigating to a
+  single-page app.
+- **up to 15 seconds** — a page it has already seen be slow.
+
+Two things keep this honest. It is a **floor measured from the moment the action fired**, not an
+extra pause on the end, so a click that already spent ten seconds waiting for a page switch pays
+nothing more, and the run's own **Nav settle** is the ceiling — no number the model produces can
+hang a run. And the [loop breaker](#when-a-run-gets-stuck-the-observer) **ignores** it: pressing
+the same dead button with more patience each time is still the same click, and still trips the
+guard.
+
+**If you know how long something takes, write it in the goal.** "Saving this form takes about
+eight seconds" is used directly. It is also the fix for a run that keeps looking too early at
+one particular screen.
+
+**Before and after, in the screenshot pane** *(new in 0.14)*. A step card shows the frame its
+Planner *reasoned over* — always the picture from **before** it acted. That made a slow click
+read as a click that did nothing, while the proof it had worked sat one card further down. The
+pane now has a **before / after** toggle, labelled with the gap between the two frames
+(`+5.0s after the action`). "After" is not a fresh capture but the next step's own frame — the
+exact picture the harness handed to the model once the waits were done — which is why the aim
+marker is hidden there: those coordinates describe where the click was pointed on the *old*
+screen. On the last step of a run there is no "after", and the toggle isn't offered.
+
 A few more appear only in the situations that call for them:
 
 | Action | Present when |
@@ -1105,7 +1207,7 @@ A few more appear only in the situations that call for them:
 | `read_text` | The agent works in a browser — reads the page's visible text in one step. |
 | `open_skill` | It has skills held back as summaries — loads one's full instructions. |
 | `complete_step` | The run has a plan — ticks off items and sub-steps, or marks one **skipped** with the reason it wasn't needed *(0.13)*. See [The plan a run follows](#the-plan-a-run-follows). |
-| `http_request` | The agent works in a headless browser (0.12+) — calls **this site's own** endpoints from inside the page it is on, signed in as the run already is. Nothing to configure; see [Calling the site the agent is already on](#calling-the-site-the-agent-is-already-on). |
+| `http_request` | The agent works in a sealed browser (0.12+) — calls **this site's own** endpoints from inside the page it is on, signed in as the run already is. Nothing to configure; see [Calling the site the agent is already on](#calling-the-site-the-agent-is-already-on). |
 | `rest_request` | It has [API access](#reaching-another-host) (0.4.2+, off by default) — fetches from an allowlisted HTTP API on **another** host instead of using that system's interface. |
 | *MCP tools* | You attached an MCP server to the agent — its tools are offered alongside these. |
 
@@ -1122,11 +1224,12 @@ A few more appear only in the situations that call for them:
 | **Model name** | Which vision model to use | Must be vision-capable. A provider with a known catalog lists its models; Custom lists whatever the endpoint reports and accepts free text. Required. |
 | **Dry run** | Plan-only vs. act-for-real | **On by default.** On = show without executing; Off = actually control input. |
 | **Step delay** | Pause after every action | Default 0.5 s. Longer = easier to watch and interrupt. |
-| **Nav settle** | Extra pause after an action that navigates | Default 0.5 s, added on top of Step delay only after a click or an Enter-terminated entry, so the next screenshot isn't of the old page. Raise it for slow-loading sites. |
+| **Nav settle** | Extra pause after an action that navigates | Default 0.5 s, added on top of Step delay only after a click or an Enter-terminated entry, so the next screenshot isn't of the old page. Raise it for slow-loading sites. *From 0.14* it is also the **ceiling** on the wait the agent declares for itself — see [What the agent declares with each action](#what-the-agent-declares-with-each-action). |
 | **Max steps** | Cap on actions per run | Default 30. Stops runaway loops; increase for longer tasks. |
-| **Scope** | Which surface the agent works on | Whole monitor, a single window, or a headless browser — see [Where the agent works](#where-the-agent-works-scope). |
+| **Scope** | Which surface the agent works on | Whole monitor, a single window, or a sealed browser — see [Where the agent works](#where-the-agent-works-scope). |
+| **Driver** | How a sealed browser is captured and driven | *New in 0.14.* Per agent (**Scope → Sealed browser**). **Headless (CDP)** by default — the page only, offscreen. **Native window** is a real browser window, and needs an executor with a display of its own — see [The driver](#the-driver-headless-or-a-real-window). |
 | **Concurrency → Maximum tasks running at the same time** | How many tasks this machine may run at once | *Reworked in 0.13.* App-wide (**Settings → General → Concurrency**), and it now governs **the workspace and the control API too**, not just the batch command. Default 1 = a second task is refused; above 1 it queues. Takes effect after a restart — see [Running more than one task at once](#running-more-than-one-task-at-once). |
-| **Max parallel slots** | How many tasks **one** agent may run at once | *New in 0.13.* Per agent (**Scope → Headless browser**), up to 4, each slot its own browser profile. A share of the machine total above, not a licence of its own. |
+| **Max parallel slots** | How many tasks **one** agent may run at once | *New in 0.13.* Per agent (**Scope → Sealed browser**), up to 4, each slot its own browser profile. A share of the machine total above, not a licence of its own. |
 | **Re-planning** | Whether a stuck run may rewrite the rest of its own plan | *New in 0.13.* Per agent (**Planner → Planning**), **on** by default, after 3 tries at one step and at most 2 re-plans a run — see [When the plan turns out to be wrong](#when-the-plan-turns-out-to-be-wrong). |
 | **Lossless screenshots (PNG)** | The format frames are captured in | *New in 0.13.* Per agent (**Scope → Capturing**), off by default. Sharper small text at the same token cost; about 2× the storage per frame. |
 | **REST API access** | Whether this agent may call an HTTP API on another host | *Moved in 0.12.* Set per agent (**Planner → API access**), not app-wide. Off by default, and needs at least one allowed host. Calling the site the agent is **already on** needs none of this — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
@@ -1172,9 +1275,9 @@ description, the agent's persona, or a skill. Full details and worked examples:
 
 ## Current limitations
 
-SimpleClaw 0.13.x is still an early release:
+SimpleClaw 0.14.x is still an early release:
 
-- **One surface per run** — an agent works on a monitor, a window, *or* a headless
+- **One surface per run** — an agent works on a monitor, a window, *or* a sealed
   browser; it can't span several at once. A [scenario](#running-a-whole-process-scenarios)
   crosses systems by giving each *step* its own agent, not by widening one run.
 - **Scenario steps run in sequence, never in parallel** — and one pass at a time. Two steps
@@ -1190,11 +1293,15 @@ SimpleClaw 0.13.x is still an early release:
   where schedules matter. See [Running a task later](#running-a-task-later-scheduling).
 - **A server runs browser agents only** — there is no desktop in a container, so the monitor
   and window scopes are refused there. See [Server mode](server-mode.md).
+- **The native browser driver needs a display of its own** *(0.14)* — so it runs on a deployment
+  and not on your desktop, one native run per display (parallel slots need a display each, not
+  just a profile each), and it cannot number a page's elements for the model the way the headless
+  driver does. See [The driver](#the-driver-headless-or-a-real-window).
 - **A remote view edits config, not content** — pointed at a server you can watch it, start
   work on it, upload to it, fix an agent's config *(0.10)* and delete one of its runs, but its
   skills, functions, demonstrations and browser profile are files on that machine, and nothing
   rewrites what a finished run says. See [Pointing it at a server](#pointing-it-at-a-server).
-- **A saved sign-in is tied to one machine** — the headless browser's profile belongs to the
+- **A saved sign-in is tied to one machine** — the sealed browser's profile belongs to the
   computer and user account that created it, so it doesn't travel to a
   server; a deployed agent signs in each run from injected credentials instead.
 - **Site sealing is a backstop, not a sandbox** — navigation away from the allowed
@@ -1219,13 +1326,18 @@ SimpleClaw 0.13.x is still an early release:
 - **Dry run** — a mode that shows planned actions without performing them.
 - **Action** — a single operation (click, type, scroll, …) chosen each step.
 - **Step** — one iteration of the loop: screenshot → action.
-- **Scope** — the surface an agent works on: a monitor, one window, or a headless
+- **Scope** — the surface an agent works on: a monitor, one window, or a sealed
   browser.
-- **Headless browser** — a browser with no visible window. SimpleClaw drives it
-  offscreen, so a task can run without touching your screen or mouse.
+- **Sealed browser** — a browser that belongs to one agent and is confined to one site
+  *(renamed from "Headless browser" in 0.14)*. Its **driver** decides whether it has a window:
+  **Headless (CDP)** drives it
+  offscreen, so a task can run without touching your screen or mouse; **Native window** *(0.14)*
+  gives it a real window on a deployment's own display.
+- **Declared wait** *(0.14)* — the number of milliseconds the agent asks for between an action
+  and the next screenshot, so it isn't shown a screen the app hasn't finished drawing.
 - **Origin** — the scheme + host of a URL (`https://app.example.com`). A
-  headless-browser agent is sealed to the start URL's origin.
-- **Take control** — pausing the agent to drive its headless browser yourself.
+  sealed-browser agent is sealed to the start URL's origin.
+- **Take control** — pausing the agent to drive its sealed browser yourself.
 - **Agent API** — the local interface another program uses to submit tasks to SimpleClaw and
   follow them, so another agent's abilities include "operate this computer". See
   [Agent API](agent-api.md).
@@ -1257,5 +1369,5 @@ SimpleClaw 0.13.x is still an early release:
   the work starts, and a satisfied one ends the run.
 - **Re-planning** — a stuck run discarding the rest of its plan and writing a new one from the
   screen in front of it *(0.13)*.
-- **Slot** — one browser profile of a headless-browser agent. Two tasks for one agent need two
+- **Slot** — one browser profile of a sealed-browser agent. Two tasks for one agent need two
   slots, because Chrome allows one browser per profile.

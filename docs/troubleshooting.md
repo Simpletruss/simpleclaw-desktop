@@ -20,13 +20,18 @@ Quick fixes for the most common issues.
 | "It does nothing" | **Dry run** is probably still ON. Turn it off once you're ready for real actions. |
 | Actions happen too fast to follow | Increase the **Step delay** in Settings so each step is easier to watch and interrupt. |
 | The next screenshot shows the *old* page after a click | Raise **Nav settle** so the page has time to load before the model looks again. |
+| It looks at a screen the app hadn't finished drawing — empty boxes, a spinner, a half-built form | From 0.14 the agent declares how long to let the app work before each screenshot, so this should be rare. When it persists on one screen, say so in the goal — *"saving this form takes about eight seconds"* is used directly — since the declared wait is capped by the agent's **Nav settle**, which is the knob to raise if even that isn't enough. See [What the agent declares with each action](user-guide.md#what-the-agent-declares-with-each-action). |
+| A step looks like its click did nothing | The frame on a step card is the one the agent *decided* on, which is always from **before** it acted. Use the **before / after** toggle in the screenshot pane (0.14) to see what the action actually produced, and the gap between the two frames. |
+| An agent is greyed out on a server with "asks for the native browser driver, but…" | That agent's **Scope → Sealed browser → Driver** is set to **Native window**, which needs an executor with a display of its own. The message names what is missing. Either deploy it to a container built with a virtual display, or switch the driver back to **Headless (CDP)** — see [The native browser driver](server-mode.md#the-native-browser-driver). |
+| A native-driver run shows undecorated windows, or dialogs stacked in the corner | The container's window manager didn't start. Its log says so at boot (`openbox did not claim`), and `AUTOPLAY_NO_WM=1` disables it deliberately. Headless-driver agents are unaffected. |
+| A value copied in one tab pastes as nothing | On a container, X has no clipboard daemon: the window that made the copy owns it, so closing that tab destroys it. 0.14's image keeps an owner alive for both selections; an older image is the fix here. |
 | It keeps repeating the same click and never gets past a screen | The run already breaks the loop by itself, but it can only tell the agent to try something else — not *why* the element isn't there. Switch the **Observer** on for that agent (0.12 and later): when the guards catch a stall, the run waits for it to say what is actually on screen and which different move to make. See [When a run gets stuck](user-guide.md#when-a-run-gets-stuck-the-observer). |
 | It reported success but nothing changed | Same answer: with the Observer on (0.12+), a `finished()` is checked against the screen first and sent back for one more turn if the goal isn't visibly done — once per run. Without it, the agent's own claim is final. |
 | It keeps re-attempting one line of the plan | From 0.13 that's what **re-planning** is for: after three tries at the same sub-step — and only when the run is also detectably stuck — the agent rewrites the rest of the plan from the screen in front of it. It's on by default; check **Agents → Planner → Planning** if it isn't. The plan panel marks the abandoned step ✕ with its note, and shows a `· tried N×` counter on a step that is currently struggling. See [When the plan turns out to be wrong](user-guide.md#when-the-plan-turns-out-to-be-wrong). |
 | It redid work that was already done | The item's **exit condition** is what prevents that, and from 0.13 SimpleClaw checks it itself — locating the place the condition names and magnifying it — rather than hoping the model notices. It needs the condition to say **where** the value is read: *"the rating beside the record's id at the top of its detail page"*, not *"this record is already rated"*. A detail page usually shows the same kind of value in a side card belonging to a different record, which is exactly what a vaguely worded condition matches. |
 | A click on a tab shows the *previous* tab's contents | Fixed in 0.13 — a tab whose panel has to be fetched is now waited on as a **tab-switch**, and the run also waits for the page's own outstanding requests. If it persists on a very slow site, raise **Nav settle** on the agent's Executor tab. |
 | It clicks an option in a dropdown and the list just closes | A browser draws a native `<select>` list **outside** the page, so a click aimed at a row passes straight through it. From 0.13 the run reads the real options out of the focused dropdown, hands them to the agent, and it picks one by typing the name. Nothing to configure. |
-| It reports a column or value as *missing* from a wide table | Those columns are past the table's right edge, and it reaches them by scrolling sideways (0.10.1 and later — older builds only ever scrolled up and down). If it still can't, the pane is too narrow to make progress: widen the window, or give a headless-browser agent a wider **viewport** on the Scope tab. |
+| It reports a column or value as *missing* from a wide table | Those columns are past the table's right edge, and it reaches them by scrolling sideways (0.10.1 and later — older builds only ever scrolled up and down). If it still can't, the pane is too narrow to make progress: widen the window, or give a sealed-browser agent a wider **viewport** on the Scope tab. |
 
 ## Platform-specific
 
@@ -37,11 +42,11 @@ Quick fixes for the most common issues.
 | **macOS:** an update downloads but never installs | Auto-install needs a signed build. Download the newer `.dmg` from Releases instead. |
 | **Linux:** the `.AppImage` won't start | Make it executable: `chmod +x SimpleClaw-*.AppImage`. |
 | **Linux:** black screenshots, or `F9` does nothing | You're probably on **Wayland**, which can block screen capture and global hotkeys. Use the in-app **Stop** button, or log into an **X11** session. |
-| **Linux/macOS:** the headless-browser scope says no browser was found | It drives your installed **Chrome or Edge**. Install one, or use a desktop/window scope. |
+| **Linux/macOS:** the sealed-browser scope says no browser was found | It drives your installed **Chrome or Edge**. Install one, or use a desktop/window scope. |
 
-## Headless-browser scope
+## Sealed-browser scope
 
-For agents whose **Scope** is a headless browser
+For agents whose **Scope** is a sealed browser — headless or a native window
 ([user guide](user-guide.md#where-the-agent-works-scope)).
 
 | Symptom | Likely cause / fix |
@@ -98,7 +103,7 @@ the **source repo only** — there's no batch command in the installed app.
 |---------|--------------------|
 | `npm run batch` isn't recognised | You're in an installed copy, not a source checkout. The batch command lives in the SimpleClaw source tree; the `.exe`/`.dmg`/`.AppImage` doesn't include it. |
 | I raised **Concurrency** and the app still refuses a second task | It **takes effect after a restart** (0.13). Quit SimpleClaw and open it again. |
-| Two tasks for the same agent still queue | One agent means one browser profile unless you say otherwise. Raise that agent's **Max parallel slots** (**Scope → Headless browser**) — each slot is a separate profile, copied from the first one so it starts out signed in. |
+| Two tasks for the same agent still queue | One agent means one browser profile unless you say otherwise. Raise that agent's **Max parallel slots** (**Scope → Sealed browser**) — each slot is a separate profile, copied from the first one so it starts out signed in. |
 | A desktop- or window-scope agent never runs in parallel | By design, whatever the setting says: there is one physical screen and one mouse. |
 | I raised **Runs** but tasks still go one at a time | Three things override the number: tasks sharing one profile slot (Chrome locks a profile, so they queue), agents that work on your **real screen** (they'd fight over one mouse), and passing `--parallel 1`. The startup line prints the limit actually in force. |
 | Nothing ran and it listed problems instead | The whole list is validated first, deliberately. Fix every line it names — usually a misspelled agent, an agent still in **Dry run**, or a real-screen agent without `--allow-desktop`. |
@@ -119,7 +124,7 @@ message rather than pass its probes and fail on the first real request.
 | `no browser-scope agent` at startup | The active organization has no agent that could run here — desktop and window scopes are refused in server mode. Either point `AUTOPLAY_ACTIVE_ORG` at the org that has your browser agents, or change the agent's [scope](user-guide.md#where-the-agent-works-scope). |
 | `no model API key for: <agent>` at startup | A browser-scope agent in the active org has no key, in its own file or from the environment. Set `AUTOPLAY_MODEL_API_KEY` (or `_FILE`) — it applies to every agent. |
 | It starts, then every run `401`s on the first model call | An `AUTOPLAY_MODEL_*` variable is overriding the key in `agent.json`, and it's the wrong one. The overlay always wins; the startup log names which variables are overriding what. |
-| `422` from `POST /v1/runs` | That agent's scope isn't a headless browser. `GET /v1/capabilities` greys out the ones that can't run here. |
+| `422` from `POST /v1/runs` | That agent's scope isn't a sealed browser, or it asks for the native driver this executor can't serve (0.14 — the response says which). `GET /v1/capabilities` greys out the ones that can't run here. |
 | `501` from `POST /v1/window/show` | Expected — a headless executor has no window. Use the run's live link instead. |
 | Refuses to start, complaining about the bind and the token | It won't publish a non-loopback port protected only by a token it generated itself, because nothing outside the process could know it. Set `AUTOPLAY_AUTH_MODE` with a real credential. |
 | Startup names a half-configured setting | `jwt` mode needs public key, issuer *and* audience; `AUTOPLAY_STORE=mongo` needs both URI and database. Half of either is a hard stop rather than a silent fallback. |
@@ -153,7 +158,7 @@ first — it probes the URL, then the token, then uploads, and names which one f
 | **Check** passes but every page is empty | Right server, wrong organization — you're seeing a real, empty roster. Check `AUTOPLAY_ACTIVE_ORG` on that server. |
 | *"rejected the token"* | Wrong or rotated bearer. Paste the credential **only** — a value that already starts with `Bearer ` becomes `Bearer Bearer …` and 401s. The app strips it, but a proxy in front may not. |
 | *"does not accept uploaded agents"* / `501` | On 0.10 there is nothing to switch on, so this means that **executor is an older build** (it needed `AUTOPLAY_ALLOW_AGENT_IMPORT=1`, or `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` for scenarios). Set the variable there, or update it. |
-| The upload worked but the agent won't run | The response's `supported` was false — usually a desktop- or window-scope agent on a server that has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to **Headless browser** and upload again. |
+| The upload worked but the agent won't run | The response's `supported` was false — usually a desktop- or window-scope agent on a server that has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to **Sealed browser** and upload again. |
 | Uploading twice gave me two agents | An upload **creates** unless **Overwrite** is ticked, so a colliding id gets a suffix rather than replacing something possibly mid-run. Delete the old one deliberately, or upload with Overwrite. |
 | A scenario is there but won't run | It names agents that aren't on that server yet. The upload result lists them; upload those agents too. |
 | Typing in a remote agent's editor does nothing | That deployment pinned `AUTOPLAY_AGENTS_READONLY=1`, which refuses edits with `409`; the banner names it. Unset it there, or edit locally and upload. |

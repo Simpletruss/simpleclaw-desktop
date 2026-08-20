@@ -42,10 +42,10 @@ screen to an AI model. Please read this page before using it on real work.
 > and it is the first feature that lets SimpleClaw send data somewhere other than your
 > model endpoint. See [Agents that call an API](#agents-that-call-an-api).
 
-> **From 0.3:** an agent can run in a **headless browser** instead of on your real
+> **From 0.3:** an agent can run in a **sealed browser** instead of on your real
 > screen, and it **stays signed in** to that site between runs (always, from 0.10). That
 > removes some risks and adds a different one — see
-> [Headless-browser agents](#headless-browser-agents).
+> [Sealed-browser agents](#sealed-browser-agents).
 
 ---
 
@@ -60,7 +60,7 @@ screen to an AI model. Please read this page before using it on real work.
   react and hit `F9`.
 - **Max steps** — the run stops after a set number of actions (30 by default) so it
   can't loop forever.
-- **Scope** — an agent can be confined to a **single window**, or to a **headless
+- **Scope** — an agent can be confined to a **single window**, or to a **sealed
   browser** sealed to one site, instead of having your whole desktop available.
 - **REST access is off, empty, and read-only until you say otherwise** — an agent gets
   no API tool at all until you both switch it on and name the hosts it may call, and
@@ -78,21 +78,23 @@ screen to an AI model. Please read this page before using it on real work.
 - **Only schedule tasks you've already watched succeed.** A
   [scheduled run](user-guide.md#running-a-task-later-scheduling) starts with nobody
   present: it takes your real mouse and keyboard at that moment, whatever else you were
-  doing, and there's no one to press `F9`. Prefer a **headless-browser** agent for
+  doing, and there's no one to press `F9`. Prefer a **sealed-browser** agent for
   scheduled work, keep the goals narrow, and check the run afterwards in **Run history**
   (scheduled runs carry the **Schedule** label).
 - **The same goes double for a batch.** The
   [batch command](user-guide.md#running-more-than-one-task-at-once) starts a whole list
   unattended, and with the **Runs** limit above 1, several at the same time — so a bad goal
   is repeated rather than caught. Use `--list` to check what will run before you commit to
-  it, `--timeout` so nothing can grind on indefinitely, and headless-browser agents rather
+  it, `--timeout` so nothing can grind on indefinitely, and sealed-browser agents rather
   than ones that take your real screen (batch refuses to run those in parallel at all, but
   it will still run them one at a time if you pass `--allow-desktop`).
 
-## Headless-browser agents
+## Sealed-browser agents
 
-An agent scoped to a **headless browser** is safer in the obvious way and riskier in
+An agent scoped to a **sealed browser** is safer in the obvious way and riskier in
 one specific way. Both are worth understanding before you point one at a real system.
+*(Called a headless-browser agent before 0.14, when the browser gained the option of a real
+window — see [what the native driver changes](#what-the-native-driver-changes) below.)*
 
 **What it removes**
 
@@ -130,12 +132,38 @@ one specific way. Both are worth understanding before you point one at a real sy
 
 **Taking over**
 
-While a headless-browser run is live you can **take control** and drive the page
+While a sealed-browser run is live you can **take control** and drive the page
 yourself — for a login, a two-factor code, or to unstick it. The agent is paused for
 as long as you hold control, but it only yields **after the step it was already
 performing**, so one last action may land as you take over. Control returns to the
 agent only when you explicitly hand it back (**Hand back** or `Esc`), never because
 your mouse left the panel.
+
+### What the native driver changes
+
+*New in 0.14.* Setting **Driver: Native window** on a sealed-browser agent trades the headless
+browser for a real one, driven with an operating system's own pointer and keyboard. Three
+consequences are worth knowing before you deploy one:
+
+- **It cannot run on your desktop, by design.** It needs a display it may take over, and the
+  only display the desktop app has is yours. An executor that can't give it one refuses the run
+  with the reason instead of quietly running it headless. So "your screen and mouse are never
+  touched" still holds wherever you can actually run it.
+- **The agent reaches things a page cannot.** The whole browser window is in play — the address
+  bar, the tab strip, downloads, and the operating system's own file picker and dialogs. On a
+  container that is a disposable filesystem and nothing of yours; on any machine with real data
+  on it, it is a wider surface than the page, and the origin seal does not cover it.
+- **Its input is indistinguishable from a person's.** Clicks and keystrokes are real system
+  events, not injected ones. That is the point of the driver — some sites reject synthetic input
+  — and it also means a site's own defences see a human. Use it where you have the standing to
+  automate the system in question.
+
+**The VNC view is off by default and needs a password.** A deployment can expose the container's
+screen for watching a native run
+([`AUTOPLAY_VNC`](server-mode.md#the-native-browser-driver)). Without a password it refuses to
+start, because it binds every interface and would otherwise publish an interactive view of a
+browser signed into your system. Its password scheme is weak by modern standards: use it over a
+trusted network or a port-forward, and leave it off in production.
 
 ## Agents that call an API
 
@@ -145,7 +173,7 @@ is configured per agent, on that agent's page under **Planner → API access** *
 from 0.12; before that, under MCP Servers)*.
 
 **The site the agent is already on is a separate question — and a smaller one.** *New in
-0.12.* A headless-browser agent can call **its own site's** endpoints with `http_request`
+0.12.* A sealed-browser agent can call **its own site's** endpoints with `http_request`
 without any of the configuration below. Nothing here governs it, and nothing needs to:
 
 - The request is sent **from inside the open page**, so it is authenticated by the session
@@ -332,7 +360,7 @@ but be clear about what is reachable once you do.
   can read your files can do anything one of your agents can do.
 - **A signed-in browser agent is the sharp edge.** A caller can drive it with your account's
   full authority on that site — the same risk as
-  [staying signed in](#headless-browser-agents), now reachable by software.
+  [staying signed in](#sealed-browser-agents), now reachable by software.
 - **The caller's model sees the outcome.** SimpleClaw reports the agent's closing answer
   back, so whatever the agent read on screen to answer with can end up at the caller's
   model provider, not only yours.
@@ -359,7 +387,7 @@ present and can hit `F9`. Here nobody is, so read this before deploying one.
 
 **What's different, in your favour**
 
-- **It can't touch a real desktop.** Only headless-browser agents run in server mode, and a
+- **It can't touch a real desktop.** Only sealed-browser agents run in server mode, and a
   desktop- or window-scope agent is refused rather than allowed to click into a blank virtual
   screen. The blast radius is the sites the agents are sealed to.
 - **No secret at rest.** Model keys and sign-in credentials come from the environment or a
@@ -380,7 +408,7 @@ present and can hit `F9`. Here nobody is, so read this before deploying one.
   limit, filter, or absorb abuse. Put it behind whatever fronts your other services.
 - **A signed-in agent acts with a real account's authority**, unattended, whenever a caller
   asks. Give those accounts the least access that does the job — this is the same sharp edge
-  as [staying signed in](#headless-browser-agents), now available to software around the
+  as [staying signed in](#sealed-browser-agents), now available to software around the
   clock.
 - **Nobody sees a run go wrong.** There is no `F9` and no one watching the frames. Prefer
   agents whose worst possible action you can live with, and read the history.
@@ -462,7 +490,7 @@ a screenshot, so it's worth being precise about when audio leaves the machine.
 ## Privacy and data handling
 
 - **Screenshots go to your AI model.** To decide each action, SimpleClaw sends an
-  image of the agent's surface — your monitor, the chosen window, or its headless
+  image of the agent's surface — your monitor, the chosen window, or its sealed
   browser page — to the model endpoint you configured. Only run it when what's on
   that surface is acceptable to send to that provider.
 - **Your API key is stored locally** on your computer in the app's configuration.
@@ -476,7 +504,7 @@ a screenshot, so it's worth being precise about when audio leaves the machine.
   - the **model endpoint** you set, which receives the screenshots and the task;
   - any **API host you allowlist** for an agent, if you turn on REST access (0.4.2+) —
     including the request bodies that agent sends;
-  - the **site an agent works on**, for a headless-browser agent;
+  - the **site an agent works on**, for a sealed-browser agent;
   - the **speech endpoints** you set, if you use voice (0.10+) — see
     [Voice and audio](#voice-and-audio);
   - any **server you register** and point the window at (0.9+), which receives whatever you
