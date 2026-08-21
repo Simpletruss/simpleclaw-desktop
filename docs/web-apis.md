@@ -34,17 +34,18 @@ Three things make it different from the tool you're replacing:
 3. [Organising a collection](#organising-a-collection)
 4. [Sending a request](#sending-a-request)
 5. [Reading the response](#reading-the-response)
-6. [Scripts](#scripts)
-7. [Variables and environments](#variables-and-environments)
-8. [Credentials](#credentials)
-9. [Sharing it with your team](#sharing-it-with-your-team)
-10. [Running the suite in CI](#running-the-suite-in-ci)
-11. [Copying a request as code](#copying-a-request-as-code)
-12. [Mixing API steps with screen steps](#mixing-api-steps-with-screen-steps)
-13. [Letting an agent call your saved requests](#letting-an-agent-call-your-saved-requests)
-14. [What it deliberately doesn't do](#what-it-deliberately-doesnt-do)
-15. [What's on disk](#whats-on-disk)
-16. [Troubleshooting](#troubleshooting)
+6. [The last sends of a request](#the-last-sends-of-a-request)
+7. [Scripts](#scripts)
+8. [Variables and environments](#variables-and-environments)
+9. [Credentials](#credentials)
+10. [Sharing it with your team](#sharing-it-with-your-team)
+11. [Running the suite in CI](#running-the-suite-in-ci)
+12. [Copying a request as code](#copying-a-request-as-code)
+13. [Mixing API steps with screen steps](#mixing-api-steps-with-screen-steps)
+14. [Letting an agent call your saved requests](#letting-an-agent-call-your-saved-requests)
+15. [What it deliberately doesn't do](#what-it-deliberately-doesnt-do)
+16. [What's on disk](#whats-on-disk)
+17. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -66,9 +67,22 @@ workspace row in the sidebar also carries **Remove from list** (the folder is un
 **Delete folder…**; **⚙ Settings → API workspaces** still has both, plus rename and
 show-in-file-manager.
 
-**This machine remembers where your checkouts are; the workspace itself doesn't.** Which
-environment you have selected, and any credential you saved, are yours alone — pushing
-"I am pointed at Production" onto everyone who pulls would be a bad day for somebody.
+**Each row says which repository it is a checkout of** *(0.15)*. Two clones of the same team
+repository, or a fork and its upstream, are indistinguishable by folder name and by path — so the
+row carries the git remote as well, shortened to the part you recognise (`github.com/acme/api`),
+with the service's mark beside it and the full URL in its tooltip. It's read from that folder's
+own `.git/config` every time the list is drawn rather than from anything this app stored, so
+running `git remote set-url` in a terminal changes it here too. **A workspace connected to nothing
+says so out loud**, because a missing line and "this is shared with nobody" look identical
+otherwise — and the second is what surprises someone whose work never reaches their team. A
+credential embedded in a remote URL (`https://<token>@github.com/…`, which is what cloning by hand
+with a token leaves in `.git/config`) is stripped before the URL ever reaches the window, so it
+can't be printed into a settings page or a screenshot of one.
+
+Clicking **the name** opens that workspace. **This machine remembers where your checkouts are; the
+workspace itself doesn't.** Which environment you have selected, and any credential you saved, are
+yours alone — pushing "I am pointed at Production" onto everyone who pulls would be a bad day for
+somebody.
 
 **In the tree, several collections can stand open at once** *(from 0.11.4)*, and which ones
 you left open survives a restart. Expanding one no longer folds the others, so comparing two
@@ -188,6 +202,13 @@ while you type, because JSON halfway through being written isn't an error worth 
 you over; it's parsed at Send, where a syntax error is reported as one. A Postman export's
 `graphql` mode imports with both fields intact.
 
+**Send becomes Cancel while the request is in the air** *(0.15)*, and pressing it stops
+waiting. Before, the button disabled itself and read *Sending…*, which left a request that hangs
+with no way out but the 30-second timeout — switching to another request doesn't stop the one
+already sent, so the other way out was restarting the app. A cancelled send is reported **as
+cancelled** rather than as a timeout, because "I stopped this" and "the server never answered"
+are different findings.
+
 **The request and response panes are resizable**, as are the query and variables boxes, and
 both remember where you put them.
 
@@ -218,6 +239,69 @@ none. It's literal text, not a regular expression, since a response body is full
 - **Save** names the file after the request and takes its extension from the format on screen,
   so switching the viewer to XML gets you an `.xml` file.
 - **Clear** drops the result only. The request, its unsaved draft and its captured values stay.
+
+## The last sends of a request
+
+*New in 0.15.*
+
+A request is a **single mutable file**. Change a header and the previous version is gone; the
+response that went with it was never anywhere but on screen. So the question that comes up most
+often while debugging — *"it worked an hour ago, what was different?"* — is the one thing a
+carefully committed workspace cannot answer.
+
+Every **Send you make by hand** is now recorded against its own request. The clock button in the
+response pane's header lists the last **25**, newest first — *Today, 4:12 pm · 401*, because
+"which of these was the 401" is the question that sends anyone into this list. Picking one
+reopens it:
+
+- **The editor shows that request as it went out** — method, URL, params, headers, body, auth and
+  scripts, including edits that were never saved, because Send sends what's on screen.
+- **The pane shows the response it got**, with its tests, its timings and its script output.
+
+**A snapshot is read-only, and there are two ways out of it.** The fields don't take typing, and
+**Save isn't shown at all** rather than greyed out — a disabled Save beside an old version invites
+the reading *"this would overwrite the request with it"*, which is the other button's job:
+
+| | |
+|--|--|
+| **Send** | Runs this version **and makes it the current one**. The one people reach for, so it stays where it was. |
+| **Restore** | Puts it back in the editor without sending — for *"I want to change something first"*. |
+
+Both convert the snapshot into an ordinary draft before anything happens, so re-running a past
+version simply *is* editing the request to be that version again. Nothing is written to disk until
+you press **Save**.
+
+### What a snapshot does and doesn't keep
+
+**A `{{secret:NAME}}` reference is kept.** It's a name, and a name being safe to write down is the
+whole point of [the vault](#credentials).
+
+**A literal credential is not.** The **Auth** tab only turns a pasted token into a reference when
+you save, so a paste-then-Send has a live token in the draft — and writing that into a history
+file would put a plaintext credential on disk that until then had only been in memory. It's masked
+out of the entire entry, and the entry records that it happened, so **Restore leaves your current
+credential alone** instead of overwriting it with dots. A snapshot in that state says so, because
+re-sending it uses the credential you have now rather than the one that went out.
+
+**A response body over 256 KB is dropped**, and the entry says so. Status, headers, timing and the
+whole request are kept, which is what makes it comparable to the one beside it.
+
+### It never reaches git
+
+History lives in **`.apiclient/`**, which the workspace gitignores and the sync backend skips
+outright. That's the only place it could go, and it's the same reasoning as
+[What's on disk](#whats-on-disk): an entry is nothing but a timestamp and a snapshot, which is
+exactly the mutable metadata a shared workspace refuses to carry — and two people's Sends are not
+a thing to merge. It is per-person state about what somebody did on one machine.
+
+**Only what a person sent is recorded.** A [scenario's API step](#mixing-api-steps-with-screen-steps),
+`npm run apitest` in CI and an [agent calling a saved request](#letting-an-agent-call-your-saved-requests)
+leave nothing behind — the app stamps that distinction itself rather than trusting the caller to
+ask for it, so an unattended pass can't quietly fill your history with its own traffic.
+
+**Current**, at the top of the list, is the way back to what you're working on. The bin beside
+the picker forgets that request's sends and leaves the request alone; deleting the `.apiclient`
+folder does the same for the whole workspace, and costs nothing but the history.
 
 ## Scripts
 
@@ -364,6 +448,18 @@ credential at rest in cleartext, invisible to somebody relying on the word *encr
 
 Saved values are **scoped per workspace**, because two repositories both using `API_TOKEN`
 for different systems is the normal case, not an edge one.
+
+**In an environment, the padlock is a toggle and the icon is the state** *(0.15)*. Closed means
+the value is in this machine's credential store and the row holds a reference to it; open means
+it's in the clear in the environment file. **Unlocking clears the row but does not delete the
+saved credential** — nothing can read a value back out of the vault to put it in the box, so the
+alternative would be losing it to a mis-click. The panel underneath therefore also lists the saved
+credentials that **no environment currently refers to**, which is what keeps one you just unlocked
+reachable instead of stranded.
+
+**Save names what it wrote.** One press can save several environments at once, and its only
+previous visible effect was the dirty dots going away — a thing *stopping* rather than a thing
+happening, which reads as "did that do anything?" and invites a second press.
 
 For an imported collection whose credentials sit one hop away — the request says
 `{{authToken}}`, the environment says `{{secret:STAGING_AUTHTOKEN}}` — the page offers to
@@ -562,11 +658,17 @@ Plain files, one request each, meant to be read in a pull request:
         folder.json
         get-customer.request.json
   environments/staging.env.json
+  .apiclient/                             gitignored: this machine's own notes
+    history/orders/<request id>.json      your last 25 sends of that request (0.15)
 ```
 
-There are no timestamps and no version fields in these files: git's history is the version,
-and a field that changes on every save turns each commit into noise that hides the one line
-that actually changed.
+There are no timestamps and no version fields in the committed files: git's history is the
+version, and a field that changes on every save turns each commit into noise that hides the one
+line that actually changed. **`.apiclient/` is where everything that would break that rule
+lives** — [send history](#the-last-sends-of-a-request), the pending-merge cache — and it is
+excluded by the workspace's own `.gitignore` *and* skipped by the sync backend, so nothing in it
+can be committed, pushed, or turned into somebody else's conflict. Deleting it loses your history
+and nothing else.
 
 ## Troubleshooting
 

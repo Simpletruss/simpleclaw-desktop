@@ -33,6 +33,8 @@ Quick fixes for the most common issues.
 | It clicks an option in a dropdown and the list just closes | A browser draws a native `<select>` list **outside** the page, so a click aimed at a row passes straight through it. From 0.13 the run reads the real options out of the focused dropdown, hands them to the agent, and it picks one by typing the name. Nothing to configure. |
 | It reports a column or value as *missing* from a wide table | Those columns are past the table's right edge, and it reaches them by scrolling sideways (0.10.1 and later — older builds only ever scrolled up and down). If it still can't, the pane is too narrow to make progress: widen the window, or give a sealed-browser agent a wider **viewport** on the Scope tab. |
 
+| Launching SimpleClaw does nothing, or a second window never appears | *From 0.15* only one copy may run per machine, so a second launch brings the existing window forward instead of starting another. Two instances were two writers over one settings file, not a duplicate window. This includes a source checkout and an installed build, which share a data directory — close the other one first. If the running copy has been minimized **by a run**, it deliberately stays out of the way; use the run bar. |
+
 ## Platform-specific
 
 | Symptom | Likely cause / fix |
@@ -141,8 +143,9 @@ message rather than pass its probes and fail on the first real request.
 | A run stalls on a login page | Unattended sign-in can't pass MFA or a CAPTCHA. Either sign the agent in once over a [sign-in link](server-mode.md#signing-in-by-hand-on-a-machine-with-no-screen) (*0.11.2*), or open the run's live link and [take the controls](user-guide.md#taking-control-mid-run). Both need `AUTOPLAY_PUBLIC_URL` set, or no link is handed out. |
 | A sign-in link answers `409` | Chrome locks a profile directory, so a link can't open while a run is using that agent's browser or a warm one still holds it. Wait for the run, or stop it. |
 | The agent was signed in and came back signed out | Before *0.11.3* a retiring worker killed its browser instead of closing it, and the profile never got the session written. Update. Otherwise: the profile lives under `AUTOPLAY_DATA_DIR`, so a new revision or replica move loses it, and the site may expire the session on its own schedule. |
-| Two tasks for one agent still run one after the other | By design — an agent has one browser profile and Chrome locks it. Concurrency (`AUTOPLAY_MAX_CONCURRENT_RUNS`, default 2) is across *different* agents. |
-| Runs die together with no obvious error | An OOM kill takes down every run on the instance. Budget ~0.9 GB per concurrent slot, or set `AUTOPLAY_MAX_CONCURRENT_RUNS=1`. |
+| Two tasks for one agent still run one after the other | By design at one slot — an agent has one browser profile and Chrome locks it. Raise that agent's **Max parallel slots** (each slot is another profile); there is no deployment variable to set, `AUTOPLAY_MAX_CONCURRENT_RUNS` having been retired in 0.14.2. |
+| Runs die together with no obvious error | An OOM kill takes down every run on the instance. Budget ~0.9 GB per concurrent slot and give the container more memory, or lower the agents' **Max parallel slots**. From 0.14.2 an additional run is held in the queue while under 1 GB is free rather than started into memory that isn't there. |
+| A task sits queued and says *Waiting for memory on this machine* | *0.14.2.* The container has under 1 GB free, so starting another run would risk an OOM kill that takes the running ones with it. It is retried every 20s. More memory, or fewer slots per agent. |
 | **Take control** does nothing on a busy server | Fixed in *0.11.3* — a run executing in a worker process couldn't be taken over, and a takeover pause was reported as a manual one, so the watchdog could stop the run out from under you. Update. |
 | A browser request is refused cross-origin | `AUTOPLAY_CORS_ORIGINS` takes exact origins, comma-separated. There is no wildcard. |
 
@@ -185,6 +188,11 @@ first — it probes the URL, then the token, then uploads, and names which one f
 | A request passes on **Send** but fails in `npm run apitest` or under an agent | Its [script](web-apis.md#scripts) doesn't run on those paths (*0.11.4*) — CI and agents grade the committed document. Move what the script does into a **Capture** or a **Test**. |
 | A script set a variable and nothing kept it | `pm.environment.set` writes to the **selected** environment; with none selected there's nowhere to put it, and the response pane says so. |
 | A script "ran past its time limit" / `pm.x is not a function` | Scripts get 2 seconds and run synchronously, and `pm.expect` implements the matchers real tests use rather than all of chai — an absent one names itself instead of answering wrongly. |
+| A past send isn't in the history list | Only sends **a person makes** are recorded (*0.15*). A scenario step, `npm run apitest` and an agent calling a saved request deliberately leave nothing behind. The last 25 per request are kept; older ones fall off. |
+| A restored send 401s where the original didn't | The credential typed for that send was a literal, and literals aren't written into history — so the snapshot uses the credential you have **now**, and the banner above the fields says so (*0.15*). A `{{secret:NAME}}` reference is kept, because a name is safe to write down. |
+| History vanished after a `git clone` on another machine | It's per-machine and never committed: it lives in the workspace's gitignored `.apiclient/` folder, which the sync backend also skips. Two people's sends aren't a thing to merge. |
+| A request hangs and there's no way out | **Send is a Cancel** while a request is in the air (*0.15*). Before that release the only ways out were the 30-second timeout or restarting the app. |
+| Unlocking a padlock in an environment emptied the row | Expected (*0.15*): nothing can read a value back out of the credential store to put it in the box. The saved credential is **not** deleted — it's listed in the panel below as one no environment refers to. |
 | A `GET` sent no body | Deliberate: `fetch` rejects a body on `GET`/`HEAD` before a packet leaves. `DELETE` and `OPTIONS` bodies *are* sent (*0.11.4*); the copied code snippet still renders a `GET` body faithfully for tools that can send one. |
 
 More detail on all of these: [Web APIs](web-apis.md#troubleshooting).

@@ -10,14 +10,123 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.14.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.15.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.14 — A real browser window, and a wait the Planner names
+## 0.15 — Every send you made, kept
 
 *Current release.*
+
+**The API client remembers every Send you made.** A request is a single mutable file: the moment
+you change a header the previous version is gone, and the response that went with it was never
+anywhere but on screen. So *"it worked an hour ago — what was different?"* is the one question a
+workspace could not answer, however carefully it was committed. Every **Send a person makes** is
+now recorded against its own request — the last **25** — and any of them can be reopened: the
+editor shows that request **as it went out**, params, headers, body, auth and scripts included,
+and the pane shows the response it got, with its tests, its timings and its script output.
+→ [The last sends of a request](web-apis.md#the-last-sends-of-a-request)
+
+**A past send is read-only, and there are two ways out of it.** The fields don't take typing and
+**Save is not rendered at all** rather than greyed out — a disabled Save beside an old version
+invites the reading *"this would overwrite the request with it"*, which is a different button's
+job. **Send** runs that version and makes it the current one. **Restore** does the same without
+sending, for *"put it back, I want to change something first"*. Both turn the snapshot back into
+an ordinary draft before anything happens, which is what keeps every state on screen describable
+in one sentence: re-running a past version **is** editing the request to be that version again,
+and nothing is written to disk until you Save.
+
+**A literal credential is never written down.** A `{{secret:NAME}}` reference is kept — it is a
+name, and a name being safe to write down is the entire point of the vault. A token **pasted**
+into the Auth tab is not: the Auth tab only converts a paste into a reference on Save, so a
+paste-then-Send has a live token in the draft, and storing that would put a plaintext credential
+on disk that until then had only been in memory. It is masked out of the whole entry, and the
+entry records that it was — so Restore leaves your current credential alone instead of
+overwriting it with dots, and the snapshot says out loud that re-sending it uses the credential
+you have now rather than the one that went out.
+
+**None of it reaches git.** History lives under `.apiclient/`, which the workspace gitignores and
+the sync backend skips — the same place the pending-merge cache lives, and the only place this
+could have gone. An entry is nothing but a timestamp and a snapshot, which is exactly the mutable
+metadata a shared workspace refuses to carry, and two people's Sends are not a thing to merge.
+Only what a **person** sent is recorded, and that is stamped by the app rather than passed by the
+caller: a scenario's API step, `npm run apitest` and an agent's saved-request call leave nothing
+behind.
+
+**Send is a Cancel while the request is in the air.** It used to disable itself and read
+*Sending…*, which left the only way out of a request that hangs being the 30-second timeout — or
+restarting the app, because switching to another request doesn't stop the one already sent. One
+button with two jobs, so the way out is the control you started it with, and there is no fourth
+state to learn. A cancelled send **reports itself as cancelled** instead of blaming the timeout
+for something you did.
+
+**The credential padlock is a toggle, and the icon is the state.** Open means the value is in the
+clear in that environment; closed means it is in this machine's vault and the row holds a
+reference. Unlocking **clears the row without deleting the saved credential**, because nothing
+can read a value back out of the vault to put it in the box — so the credentials panel below now
+also lists the saved credentials that no environment refers to, which is what keeps an unlocked
+one reachable instead of stranded. **Save now says what it wrote**, by name: saving several
+environments at once and seeing only the dirty dots disappear is a thing *stopping*, not a thing
+happening, and the honest reading of it was "did that do anything?"
+→ [Credentials](web-apis.md#credentials)
+
+**A workspace row says which repository it is a checkout of.** Two clones of the same team
+repository, or a fork and its upstream, cannot be told apart by folder name or by path — so each
+row in **Web APIs → workspace list** now carries its git remote, shortened to the part people
+recognise, with the service's own mark beside it and the full URL in the tooltip. It is read from
+that folder's own `.git/config` on every listing rather than from anything this app stored, so it
+is blank rather than wrong after someone runs `git remote set-url` in a terminal. **A workspace
+connected to nothing says so**, because "no line here" and "this is shared with nobody" look
+identical otherwise, and the second is what surprises someone whose edits never reach their team.
+Credentials are stripped from the URL **in the main process, before it crosses to the window** —
+a workspace cloned by hand with `https://<token>@github.com/…` has that token in `.git/config`,
+and rendering the string would print it into a settings page, every screenshot of one, and the
+support bundle that follows. The workspace name is also the way in now, instead of an Open button
+that had to hide itself on the row that was already open and shifted the other controls sideways
+under your pointer.
+
+**One SimpleClaw per machine.** A second launch brings the existing window back rather than
+starting a second app. Two instances were never a duplicate window, they were **two writers**:
+the settings, the agent roster and the schedules are rewritten whole with no compare-and-swap, so
+the second instance silently reverts the first, and both would bind the control API port, arm the
+scheduler, and reap each other's browsers at boot. The relaunch is answered by showing the window
+**except while a run has it minimized** — the run put it away on purpose and the run bar is
+standing in for it, so dropping the window back on screen would break the run you were called
+away from. This applies to development builds too: a source checkout and an installed build share
+one user-data directory, so they are two writers whichever way round you start them.
+
+**Parallel runs work in an installed build.** A second concurrent run executes in a worker
+process, and the pool started one by naming the entry file in its arguments — which means
+something only to an *unpackaged* Electron. In an installed build that argument is ignored and
+the child booted **the desktop app again**: a second window, a second port bind, a second browser
+cleanup, dying seconds later in an error dialog on the first write its worker flag forbids, while
+the pool reported only *"worker … exited before it was ready"*. Which process a launch becomes is
+now decided in one place from the environment rather than from arguments, so the path a release
+depends on is the one a development run exercises. A run executor that somehow loads the desktop
+entry now fails immediately and says why, instead of falling over later somewhere unrelated.
+
+**Also in this release**
+
+- **A long response body is kept out of the history file.** Past 256 KB an entry keeps its
+  status, headers, timing and the request — everything that makes it comparable — and drops the
+  body, saying so. The file is rewritten in full on every Send, so that ceiling is what each
+  click pays for.
+- **The credentials panel stopped making an IPC round-trip per keystroke.** It keyed its caches
+  on an array its caller rebuilt on every render.
+- **The request-picker dropdowns page.** Long lists render in chunks with placeholders for the
+  next page, and the keyboard is never paged: arrows, Home and End walk the whole list and reveal
+  what they land on.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.15.0** | Per-request send history, cancellable sends, the environment padlock as a toggle, the repository line in the workspace list, one-instance-per-machine, and the packaged-build worker fix. |
+
+---
+
+## 0.14 — A real browser window, and a wait the Planner names
 
 **Browser scope is now called *Sealed browser*, and it can be a real window.** The name changed
 because "headless" described the *mechanism* and the seal is the point: one Chrome, one origin,
@@ -91,6 +200,15 @@ headless driver only, since its whole purpose is the `HeadlessChrome` token a re
 sends. The curated model lists dropped `qwen3.8-27b`. And the dev container's CORS default now
 includes the desktop app's own origin, which is what a "could not be reached" with nothing in the
 container's log was.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.14.2** | **A machine-wide concurrency cap no longer exists.** How many tasks an executor runs at once is the sum of the agents' own **Max parallel slots**, and a task waits exactly when *its own* agent's profiles are all busy — so one agent's queue can never hold up another's. `AUTOPLAY_MAX_CONCURRENT_RUNS` is retired and no longer read (a leftover line in an env file does nothing), and **Settings → General → Concurrency** is gone with it: a number in two places, one of which was invisible from the window that submitted the task, was what made a queued run impossible to explain. **Memory holds a task instead of killing the machine** — no *additional* run starts while under 1 GB is free, read from the container's own limit rather than the host's, reported as *Waiting for memory on this machine* and retried; the first run is always admitted. → [Running more than one run at a time](server-mode.md#running-more-than-one-run-at-a-time) |
+| | **`GET /v1/status?byAgent=1`**, for a dispatcher choosing between several executors. Plain `queued` is the *whole* queue's depth, which cannot answer "can **this** agent start now" — the per-agent view reports `slots`, `busy` and `free` so a caller can route on "a task sent now starts now". → [Choosing between executors](agent-api.md#choosing-between-several-executors) |
+| **0.14.1** | **A JSON body can carry comments and a trailing comma.** A hand-written body accumulates alternatives — three models, two providers, the endpoint that worked yesterday — and JSON has nowhere to put them. `// ` line comments and `/* */` blocks are now stripped immediately before the body is sent, so the server never sees the leniency; the trailing comma goes with them, because commenting out the last entry of an object is what leaves one. Strings are never touched — `"https://…"` contains a `//` and so does almost every real body — and the space after `// ` is required for the same reason. **JSON bodies only**: deleting `//` out of a raw XML or CSV body would be corruption rather than leniency. **Open data folder works for a container on this machine**, with nothing configured: the executor only knows its own side of the mount, so the app asks Docker which container publishes the port this window is talking to and what it binds there, then opens the run's own folder. Bind mounts only — a named volume lives inside the Docker VM and reports "no folder" rather than a path that happens to parse — and the entry's **Local data folder** field is the override for a native process, a proxy or an SSH tunnel. **A failed model endpoint says what actually happened** (DNS, refused, TLS, timeout, the wrong port) instead of a bare network error, and the agent editor's fields carry hover hints explaining what they change. |
+| **0.14.0** | The Sealed browser rename and the native window driver, the Planner-declared `wait`, and the before/after toggle in the screenshot pane. |
 
 ---
 

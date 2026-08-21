@@ -37,7 +37,22 @@ in the open spreadsheet by the second column"* — and SimpleClaw does it for yo
 your real desktop. It's a general-purpose **screen agent**: it works with whatever
 is visible on your display, so it isn't limited to a fixed list of apps.
 
-**New in 0.14 — a real browser window, and a wait it decides for itself.** The browser scope is
+**New in 0.15 — every send you made, kept.** The **Web APIs** client now records every
+**Send a person makes** against its own request — the last 25 — and any of them can be reopened:
+the editor shows that request *as it went out*, params, headers, body and auth included, and the
+pane shows the response it got. That answers the one question a workspace cannot, because a
+request is a single mutable file and the moment a header changes the previous version is gone:
+*"it worked an hour ago, what was different?"* A past send is read-only, with **Send** to re-run
+it and **Restore** to put it back in the editor; a pasted credential is masked out of it rather
+than written to disk, and none of it is ever committed — history lives in a gitignored folder
+because two people's Sends are not a thing to merge. **Send is also a Cancel** while a request is
+in the air. Away from the API client, **two copies of SimpleClaw can no longer run at once** —
+they were two writers over one settings file, not a duplicate window — and parallel runs now work
+in an **installed** build, where a worker process used to boot a second copy of the whole app and
+die in a dialog. See [The last sends of a request](docs/web-apis.md#the-last-sends-of-a-request)
+and [Release notes](docs/release-notes.md).
+
+**From 0.14 — a real browser window, and a wait it decides for itself.** The browser scope is
 now called **Sealed browser**, and it no longer has to be invisible: on a deployment with a
 display of its own it can drive a **real Chrome window**, where the agent sees the address bar,
 the tabs and the download shelf, deals with the operating system's own file picker and dialogs —
@@ -160,7 +175,7 @@ provider's address and models for you ([Connect your AI model](docs/getting-star
 and the always-on-top **run bar** stands in for the window whenever the window isn't on
 screen ([The run bar](docs/user-guide.md#the-run-bar)).
 
-**New in 0.4 — other agents can use it.** A local **Agent API** lets another AI agent hand
+**From 0.4 — other agents can use it.** A local **Agent API** lets another AI agent hand
 work to SimpleClaw: it decomposes your process, SimpleClaw carries out one operation at a
 time on the real systems, streams each step back as it happens, and reports the answer.
 That's the missing half for systems with no usable API — the agent plans, SimpleClaw

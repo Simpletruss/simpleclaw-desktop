@@ -41,10 +41,11 @@ on `127.0.0.1` only, protected by a token that changes every launch.
 5. [Running a whole scenario](#running-a-whole-scenario)
 6. [A worked example](#a-worked-example)
 7. [How runs behave](#how-runs-behave)
-8. [Rules a caller must follow](#rules-a-caller-must-follow)
-9. [Security](#security)
-10. [Limits](#limits)
-11. [Troubleshooting](#troubleshooting)
+8. [Choosing between several executors](#choosing-between-several-executors)
+9. [Rules a caller must follow](#rules-a-caller-must-follow)
+10. [Security](#security)
+11. [Limits](#limits)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -107,7 +108,7 @@ error — nothing here can launch the app.
 |----------|--------------|
 | `GET /v1/health` | **Liveness**, unauthenticated: the process is up, and its version. |
 | `GET /v1/ready` | **Readiness**, unauthenticated: `503` until it could actually take a run. |
-| `GET /v1/status` | Whether a run is in progress, how many are queued, whether it's shutting down. |
+| `GET /v1/status` | Whether a run is in progress, how many are queued, whether it's shutting down. *0.14.2:* `?byAgent=1` adds the per-agent load a dispatcher routes on — see [Choosing between several executors](#choosing-between-several-executors). |
 | `GET /v1/capabilities` | Every agent, the system it is sealed to, and the operations it has been shown. |
 | `POST /v1/runs` | Submit a task. Returns `202` with a `runId` — it does **not** wait for the run, unless you add `?wait=<seconds>` (*0.11*, see [below](#waiting-for-the-answer-in-one-call)). |
 | `GET /v1/runs/{id}` | Poll one run: state, step count, a pending question, the final result. |
@@ -410,14 +411,14 @@ never taught here, so the fix is to record a demonstration, not to try again.
 
 - **Submitting is not waiting.** `POST /v1/runs` returns immediately. A run takes minutes
   and can stop to ask a question, so a blocking call would just hang.
-- **Queued, and only as parallel as the executor is** *(changed in 0.11.2)*. The desktop app
-  performs one run at a time. A
-  [server deployment](server-mode.md#running-more-than-one-run-at-a-time) performs
-  `AUTOPLAY_MAX_CONCURRENT_RUNS` — **two by default**, each in its own process with its own
-  browser — but **never two for the same agent**, since one agent means one browser profile
-  and Chrome locks it. Anything beyond that waits, and `queuePosition` tells the caller where
-  it is. A caller that needs throughput should spread work across *agents* first, and across
-  executors after that, rather than expect one agent to parallelise.
+- **Queued, and only as parallel as the agent is** *(changed in 0.11.2; the machine-wide cap
+  removed in 0.14.2)*. Capacity is the agents' own **Max parallel slots**, each slot a separate
+  browser profile in its own process — there is no deployment-level ceiling on top. A task waits
+  exactly when *its own* agent's slots are all busy, since one profile means one Chrome and Chrome
+  locks it, and `queuePosition` tells the caller where it is. One agent's queue never holds up
+  another's. A caller that needs throughput should spread work across *agents* first and across
+  executors after that, rather than expect one agent to parallelise —
+  [`?byAgent=1`](#choosing-between-several-executors) is how to tell which has room.
 - **Questions come back to the caller.** If the agent can't determine something (*"which of
   these two clients do you mean?"*), the run pauses and the question is on the stream.
   Answer it, or stop the run. A pause nobody answers within ten minutes is stopped.
@@ -430,6 +431,54 @@ never taught here, so the fix is to record a demonstration, not to try again.
   stays fully usable. A server has no window; the run page is the equivalent.
 - **Every run is in the history** exactly like one you started yourself, so you can replay
   the frames afterwards and see precisely what the caller had it do.
+
+## Choosing between several executors
+
+*New in 0.14.2.*
+
+Several containers can serve the same agent — one per digital worker, or a pool of identical
+ones. A dispatcher in front of them has to pick, and plain `/v1/status` cannot answer the
+question it is actually asking: `queued` is the **whole** queue's depth, while "can *this agent*
+start now" depends on that agent's own slots.
+
+```sh
+curl "https://exec-001.example.com/v1/status?byAgent=1" -H "Authorization: Bearer $TOKEN"
+```
+
+```jsonc
+{
+  // `maxConcurrent` is arithmetic, not a limit: the sum of every agent's slots, i.e. what this
+  // box could have going at once if every agent were busy. Nothing enforces it.
+  "ok": true, "maxConcurrent": 5, "queued": 2, "draining": false,
+  "agents": [
+    // `free` > 0 means a task sent now STARTS now.
+    { "agentId": "acme-clerk", "taskCount": 3, "running": 2, "queued": 1,
+      "slots": 4, "busy": 2, "free": 2, "supported": true },
+    { "agentId": "acme-filer", "taskCount": 2, "running": 1, "queued": 1,
+      "slots": 1, "busy": 1, "free": 0, "supported": true }
+  ]
+}
+```
+
+**Sort on `free`, and fall back to `taskCount` only when every candidate reports `free: 0`.** The
+two disagree in both directions, and each disagreement is a misroute: a four-slot agent with three
+tasks on it can start yours immediately, while a one-slot agent with a single task cannot. Once
+nothing is free, the shallower queue is the better guess.
+
+**`supported: false` means don't send at all.** That executor can't run the agent — a native-window
+agent on a deployment with no display, say — and the submission would be refused with `422` rather
+than queued. Its `free` is reported as `0` for the same reason: a spare profile on an agent that
+cannot run here is not capacity, and a router sorting on `free` would otherwise send it work every
+time.
+
+**A task can also wait on memory**, not just on slots: an executor holds an *additional* run back
+while under 1 GB is free rather than risking an OOM kill that would take every run in the process
+with it. `free` doesn't predict that — it's a fact about the machine, not the agent — so treat a
+task that queues with `free > 0` as an under-provisioned executor, and see
+[Running more than one run at a time](server-mode.md#running-more-than-one-run-at-a-time).
+
+**It is authenticated**, like `/v1/status` itself: per-agent load is operational intelligence
+about what a business is doing, not a probe payload. Use `/v1/health` and `/v1/ready` for probes.
 
 ## Rules a caller must follow
 

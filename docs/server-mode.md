@@ -429,7 +429,7 @@ variables. Nothing set here is written back to disk.
 |-------|-----------|
 | **Mode** | `AUTOPLAY_DATA_DIR`, `ORGANIZATIONS_DIR`, `AUTOPLAY_ACTIVE_ORG`, `AUTOPLAY_AGENTS_READONLY`, `AUTOPLAY_AGENTS_WATCH_MS` |
 | **HTTP** | `AUTOPLAY_HTTP_HOST` (server default `0.0.0.0`), `AUTOPLAY_HTTP_PORT` (8790), `AUTOPLAY_PUBLIC_URL`, `AUTOPLAY_CORS_ORIGINS`, `AUTOPLAY_MAX_QUEUE`, `AUTOPLAY_RUN_TTL_MIN`, `AUTOPLAY_PAUSE_TIMEOUT_MS` |
-| **Concurrency** | `AUTOPLAY_MAX_CONCURRENT_RUNS` (2 in server mode, 1 on the desktop) — see [below](#running-more-than-one-run-at-a-time) |
+| **Concurrency** | *Nothing to set.* `AUTOPLAY_MAX_CONCURRENT_RUNS` is **retired as of 0.14.2** and no longer read; capacity is the sum of the agents' own **Max parallel slots** — see [below](#running-more-than-one-run-at-a-time) |
 | **Auth** | `AUTOPLAY_AUTH_MODE` (`static`\|`jwt`), `AUTOPLAY_API_TOKEN`, `AUTOPLAY_JWT_PUBLIC_KEY`, `AUTOPLAY_JWT_ISSUER`, `AUTOPLAY_JWT_AUDIENCE`, `AUTOPLAY_JWT_ALGS`, `AUTOPLAY_JWT_LEEWAY_S`, `AUTOPLAY_JWT_ORG_CLAIM`, `AUTOPLAY_RUN_OWNERSHIP` |
 | **Model** | `AUTOPLAY_MODEL_{PROVIDER,BASE_URL,API_KEY,MODEL}`, plus `AUTOPLAY_SYSTEM_MODEL_*` and `AUTOPLAY_DETECTOR_MODEL_*`, which fall back to it field by field |
 | **Browser** | `AUTOPLAY_BROWSER_PATH`, `AUTOPLAY_BROWSER_EXTRA_ARGS`, `AUTOPLAY_BROWSER_KEEPALIVE_MS`, `AUTOPLAY_ALLOW_DESKTOP_SCOPE` |
@@ -466,24 +466,44 @@ to empty local storage that would pass its readiness probe and serve an empty ag
 
 ## Running more than one run at a time
 
-*New in 0.11.2.* An executor runs **two tasks at once by default**
-(`AUTOPLAY_MAX_CONCURRENT_RUNS`, `1` for one at a time). Above `1` a run doesn't execute in
-the process answering the API at all: it goes to a **worker process** pinned to its agent,
-each with its own Chrome. That's what makes it safe rather than merely parallel —
-the capture scope and the browser operator are one-per-process by construction, so no two
-runs can reach the same browser.
+*New in 0.11.2. Reworked in 0.14.2, which removed the machine-wide setting.*
 
-**The limit is per agent, and that part isn't a policy choice.** Two *different* agents run
-side by side; two tasks for the *same* agent take turns, because Chrome holds a
-`SingletonLock` on a profile directory and an agent's profile is one directory. A task whose
-agent is busy doesn't block a task for a free agent queued behind it.
+**How many tasks an executor runs at once is the sum of the agents' own slots** — each agent's
+**Max parallel slots** (**Scope → Sealed browser**, up to 4). There is no machine-level number on
+top of that: `AUTOPLAY_MAX_CONCURRENT_RUNS` is **retired and no longer read**, and a leftover line
+in an `.env` file does nothing. A task waits when *its own* agent's slots are all busy and starts
+the moment one frees up, which is now the only reason a submitted task ever waits — one agent's
+queue can't hold up another's, and a caller can tell from
+[`/v1/status?byAgent=1`](agent-api.md#choosing-between-several-executors) whether a task sent now
+would start now.
 
-**Size the container before raising it.** Budget about **0.9 GB per slot** — an executor
-process plus its Chrome — so the default of 2 makes ~1.8 GB the floor, and 2–4 wants roughly
-4 GB and 2 vCPU. An out-of-memory kill takes down **every** run on the instance, not just the
-one that asked for too much, so set this to `1` on a small instance.
+**A slot is a browser profile, and that part isn't a policy choice.** Chrome holds a
+`SingletonLock` on a profile directory, so two runs cannot share one. Slot 2 and up are copied
+from the first the first time they're needed, so they start out signed in.
 
-**Taking control works at any setting.** `/v1/runs/:id/takeover`, `/live` and `/input` carry
+Wherever a machine could run two things at once, a run doesn't execute in the process answering
+the API at all: it goes to a **worker process** pinned to its agent and slot, each with its own
+Chrome. That's what makes it safe rather than merely parallel — the capture scope and the browser
+operator are one-per-process by construction, so no two runs can reach the same browser.
+*Screen-scope agents are the exception and always take turns*: desktop and window scope drive the
+one display, so they run in the API process itself, one at a time, however their slots read.
+
+**Size the container against the roster.** Budget about **0.9 GB per concurrent run** — a worker
+process plus its Chrome — so four slots across the roster wants roughly 4 GB and 2 vCPU. The
+`[pool]` line at startup prints that arithmetic against the memory the container actually has,
+and warns when it doesn't fit.
+
+**An under-provisioned container queues instead of dying** *(0.14.2)*. Before starting any
+*additional* run the executor checks free memory and leaves the task queued while less than
+**1 GB** is available, retrying every 20 seconds and reporting *Waiting for memory on this
+machine* with the figure. It reads the **container's own limit** (cgroup), not the node's —
+`os.freemem()` inside a container is a fact about the host — because an OOM kill takes down
+**every** run in the process rather than the marginal one. The first run is always admitted: a box
+with nothing running has nothing to protect, and holding it would make an idle executor look dead.
+If tasks are waiting on memory rather than running, the fix is more memory or fewer slots per
+agent.
+
+**Taking control works either way.** `/v1/runs/:id/takeover`, `/live` and `/input` carry
 the run id and are answered by whichever process holds that run's browser — this one, or a
 worker — so [taking control](user-guide.md#taking-control-mid-run) behaves the same on the
 desktop, on a single-slot container, and on one run out of eight *(fixed in 0.11.3, where a
@@ -733,10 +753,11 @@ profile, the profile is a throwaway in the container's own temp directory.
 pointing at a Key Vault or secrets-manager mount, rather than the key at rest in an
 `agent.json` on a share several people can read.
 
-**Scale within an instance first, then by replica** *(changed in 0.11.2)*. An instance runs
-`AUTOPLAY_MAX_CONCURRENT_RUNS` tasks at once — two by default, one worker process and one
-Chrome each, and never two for the same agent — and anything beyond that queues, with
-`queuePosition` telling the caller where it is. See
+**Scale within an instance first, then by replica** *(changed in 0.11.2; the machine-wide cap
+removed in 0.14.2)*. An instance runs as many tasks at once as its agents have **Max parallel
+slots** between them — one worker process and one Chrome each, never two on the same profile —
+and a task queues only when its own agent is full, with `queuePosition` telling the caller where
+it is. See
 [Running more than one run at a time](#running-more-than-one-run-at-a-time) for the memory
 budget, which is the real ceiling. Beyond that, run more instances and give each its own
 storage: two executors sharing one agent's folder will fight over the same run history.
@@ -800,9 +821,10 @@ feature, and a service that replaces itself without being asked is not one.
 - **Browser-scope agents only.** No desktop, no window scope. `AUTOPLAY_ALLOW_DESKTOP_SCOPE=1`
   exists as an escape hatch for a host with a real display, but it isn't what the container is
   for, and there is nothing on a container's virtual screen to operate.
-- **Two runs at a time per instance**, and never two for the same agent — raise or lower it
-  with `AUTOPLAY_MAX_CONCURRENT_RUNS`, budgeting ~0.9 GB a slot, then scale with replicas. See
-  [Running more than one run at a time](#running-more-than-one-run-at-a-time).
+- **One run per agent profile**, so capacity is set by the agents' **Max parallel slots** and not
+  by a deployment variable *(0.14.2)*. Budget ~0.9 GB a slot, then scale with replicas; below 1 GB
+  free an additional run waits rather than risking an OOM kill that would take the others with it.
+  See [Running more than one run at a time](#running-more-than-one-run-at-a-time).
 - **One sign-in link at a time, and not while a run holds the browser** — see
   [Signing in by hand](#signing-in-by-hand-on-a-machine-with-no-screen).
 - **No teaching from a server.** Recording a demonstration, editing a persona, and

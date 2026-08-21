@@ -507,17 +507,25 @@ demonstrations.)
 
 ## Running more than one task at once
 
-*The batch command is from 0.6; the app running several tasks at once is new in 0.13.*
+*The batch command is from 0.6; the app running several tasks at once is new in 0.13. The
+machine-wide setting was removed in 0.14.2 — capacity now comes from the agents themselves.*
 
-**⚙ Settings → General → Concurrency → "Maximum tasks running at the same time"** is the
-ceiling for this whole machine — the workspace, the [control API](agent-api.md) and the batch
-command below all draw from it. **It defaults to 1**, which is the behaviour every earlier
-release had: one task runs and a second is refused. Raise it and a second task is **queued**
-instead, starting the moment a slot frees up. **It takes effect after a restart.**
+**How many tasks run at once is the sum of the agents' own slots.** Give an agent a second
+**Max parallel slot** (**Agents → Scope → Sealed browser**) and the workspace will run two of its
+tasks side by side instead of refusing the second; leave every agent at 1 and the machine behaves
+exactly as it always did. There is **no ⚙ Settings → General → Concurrency any more**: a second
+number, in a place the person submitting the task couldn't see, was what made a queued run
+impossible to explain — and it meant raising an agent's slots did nothing until you found the
+other setting.
 
-Each concurrent task is its own process with its own Chrome — budget about **0.9 GB
-each** and raise this only as far as the machine's memory allows (the cap is 8). It is memory
-that bounds this, not CPU.
+**A task waits only on its own agent.** Two different agents run side by side whatever their
+slots; a second task for an agent whose profiles are all busy is **queued** and starts the moment
+one frees up. One agent's queue never holds up another's.
+
+Each concurrent task is its own process with its own Chrome — budget about **0.9 GB each**. It is
+memory that bounds this, not CPU, and **memory holds a task rather than killing the machine**: no
+*additional* task starts while under 1 GB is free, and one waiting for that reason says so
+(*Waiting for memory on this machine*) instead of failing. The first task always starts.
 
 **The workspace still shows one run at a time.** A live run is a conversation, and two of them
 interleaved in one thread is unreadable. So the status bar grows a **run picker** listing
@@ -530,18 +538,19 @@ than whichever one the workspace happens to be focused on.
 
 ### One agent, several browsers
 
-**Agents → Scope → Sealed browser → Max parallel slots** is how much of that machine-wide
-total a single agent may claim (up to 4). Each slot is a **whole browser profile**, because
-Chrome allows one browser per profile — which is why two tasks for one agent queued behind each
-other however much the machine could afford.
+**Agents → Scope → Sealed browser → Max parallel slots** is how many tasks one agent may run at
+the same time (up to 4). Each slot is a **whole browser profile**, because Chrome allows one
+browser per profile — which is why two tasks for one agent queued behind each other however much
+the machine could afford.
 
 - **Slot 2 and up are copied from the first slot** the first time they're needed, so they start
   out signed in. After that each keeps its own session and they expire independently; signing in
   again on the Scope tab refreshes all of them.
-- It is a **share of the machine's total, not a licence of its own** — raising it does nothing
-  until Concurrency is above 1.
+- **It is the whole setting** *(from 0.14.2)*. Raising it takes effect on its own — there is no
+  machine-wide ceiling left to raise first.
 - **Desktop- and window-scope agents run one at a time regardless.** There is one physical
-  screen and one cursor, so two of them would fight over it.
+  screen and one cursor, so two of them would fight over it — they run in the app's own process,
+  in turn, whatever their slots say.
 
 ### The batch command
 
@@ -574,8 +583,10 @@ Useful flags: `--parallel N` (how many at once), `--timeout N` (give up on a tas
 minutes), and `--list` (print what *would* run and stop, so you can check the list before
 committing to it).
 
-**How many run at the same time.** The Concurrency setting above is the ceiling; `--parallel N`
-overrides it for a single command. Three rules apply no matter what number you set:
+**How many run at the same time.** `--parallel N` caps this one command; left off, it defaults to
+the number of distinct browser profiles the task list actually needs *(from 0.14.2 — before that
+it drew on the machine-wide Concurrency setting, which no longer exists)*. Three rules apply no
+matter what number you set:
 
 - **Tasks sharing one profile slot of an agent run one at a time.** Chrome holds a lock per
   profile directory, so a second worker on that slot can't start. Raising the agent's **Max
@@ -1228,8 +1239,7 @@ A few more appear only in the situations that call for them:
 | **Max steps** | Cap on actions per run | Default 30. Stops runaway loops; increase for longer tasks. |
 | **Scope** | Which surface the agent works on | Whole monitor, a single window, or a sealed browser — see [Where the agent works](#where-the-agent-works-scope). |
 | **Driver** | How a sealed browser is captured and driven | *New in 0.14.* Per agent (**Scope → Sealed browser**). **Headless (CDP)** by default — the page only, offscreen. **Native window** is a real browser window, and needs an executor with a display of its own — see [The driver](#the-driver-headless-or-a-real-window). |
-| **Concurrency → Maximum tasks running at the same time** | How many tasks this machine may run at once | *Reworked in 0.13.* App-wide (**Settings → General → Concurrency**), and it now governs **the workspace and the control API too**, not just the batch command. Default 1 = a second task is refused; above 1 it queues. Takes effect after a restart — see [Running more than one task at once](#running-more-than-one-task-at-once). |
-| **Max parallel slots** | How many tasks **one** agent may run at once | *New in 0.13.* Per agent (**Scope → Sealed browser**), up to 4, each slot its own browser profile. A share of the machine total above, not a licence of its own. |
+| **Max parallel slots** | How many tasks **one** agent may run at once, and therefore how many this machine runs at once | *New in 0.13; became the only setting in 0.14.2, when the machine-wide **Settings → General → Concurrency** was removed.* Per agent (**Scope → Sealed browser**), up to 4, each slot its own browser profile. A task waits only when its own agent is full — see [Running more than one task at once](#running-more-than-one-task-at-once). |
 | **Re-planning** | Whether a stuck run may rewrite the rest of its own plan | *New in 0.13.* Per agent (**Planner → Planning**), **on** by default, after 3 tries at one step and at most 2 re-plans a run — see [When the plan turns out to be wrong](#when-the-plan-turns-out-to-be-wrong). |
 | **Lossless screenshots (PNG)** | The format frames are captured in | *New in 0.13.* Per agent (**Scope → Capturing**), off by default. Sharper small text at the same token cost; about 2× the storage per frame. |
 | **REST API access** | Whether this agent may call an HTTP API on another host | *Moved in 0.12.* Set per agent (**Planner → API access**), not app-wide. Off by default, and needs at least one allowed host. Calling the site the agent is **already on** needs none of this — see [Calling an API instead of a UI](#calling-an-api-instead-of-a-ui). |
