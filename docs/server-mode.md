@@ -1,6 +1,6 @@
 # SimpleClaw — Server mode
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/server-mode.html)
@@ -40,15 +40,16 @@ the environment instead of a settings screen.
 10. [Configuration](#configuration)
 11. [Running more than one run at a time](#running-more-than-one-run-at-a-time)
 12. [The native browser driver](#the-native-browser-driver)
-13. [Signing in without a person](#signing-in-without-a-person)
-14. [Signing in by hand, on a machine with no screen](#signing-in-by-hand-on-a-machine-with-no-screen)
-15. [Authentication](#authentication)
-16. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
-17. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
-18. [Running it somewhere real](#running-it-somewhere-real)
-19. [Security](#security)
-20. [Upgrading](#upgrading)
-21. [Limits](#limits)
+13. [Driving an Android device](#driving-an-android-device)
+14. [Signing in without a person](#signing-in-without-a-person)
+15. [Signing in by hand, on a machine with no screen](#signing-in-by-hand-on-a-machine-with-no-screen)
+16. [Authentication](#authentication)
+17. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
+18. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
+19. [Running it somewhere real](#running-it-somewhere-real)
+20. [Security](#security)
+21. [Upgrading](#upgrading)
+22. [Limits](#limits)
 
 ---
 
@@ -136,7 +137,7 @@ desktop-scope agent is refused before step 1, not discovered halfway through. Va
 reference but never produce have to arrive as `params` — there's nobody here to be asked.
 
 **It refuses to start when it couldn't work.** No agent in the active organization that
-could actually run — no browser-scope agent, or one with no model API key — is a startup
+could actually run — no browser- or Android-scope agent, or one with no model API key — is a startup
 failure with a readable message. So is an unknown provider name, a half-configured JWT
 setup, or a half-configured database. Each of these would otherwise surface much later as a
 confusing error several layers from the setting that caused it.
@@ -569,6 +570,48 @@ Linux, or the session is Wayland (where the screen cannot be read at all), the a
 as **unsupported with that specific reason** and a run submitted anyway is refused before it
 starts. It never silently falls back to the headless driver, which would leave you with a run
 that behaves unlike the agent you deployed.
+
+## Driving an Android device
+
+**New in 0.16.** A phone-scope agent runs here for the same reason a browser-scope one does:
+what a container lacks is a *screen*, and `adb` needs a network. The image ships the `adb`
+client, so nothing extra is installed.
+
+The device itself is **not** in this container. Run an emulator as a sidecar and point the
+executor at it by service name:
+
+```yaml
+services:
+  simpleclaw:
+    environment:
+      AUTOPLAY_ADB_HOST: emulator:5555   # default for every phone agent here
+
+  emulator:
+    image: budtmo/docker-android:emulator_14.0
+    privileged: true
+    devices: ['/dev/kvm']
+```
+
+Two things decide whether this is viable on a given host:
+
+- **`/dev/kvm` must be there.** An emulator without hardware virtualisation falls back to full
+  CPU emulation and takes minutes per screen, which fails every timeout in the agent loop
+  rather than merely running slowly. This rules out most managed container platforms — a VM
+  you control, or your own hardware, is where this realistically lives. Check with
+  `docker run --rm --privileged alpine ls /dev/kvm`.
+- **The address is the SERVICE NAME**, not `localhost`. Inside a container `localhost` is that
+  container itself. An emulator on the Docker host is `host.docker.internal:5555`.
+
+Cold boot is minutes and `adb` refuses connections throughout; the executor retries across
+that window, so a run submitted early waits rather than failing.
+
+**Phone runs are serialised.** There is no per-agent parallelism for this scope, so two phone
+agents take turns even when they drive different devices — unlike
+[browser agents](#running-more-than-one-run-at-a-time).
+
+Set-up, the Scope fields, what each action does on a touch screen, and the full list of
+limitations — including that a phone scope has **no origin seal** and **cannot fill stored
+credentials** — are on [Android devices](android-devices.md).
 
 ## Signing in without a person
 

@@ -1,6 +1,6 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
@@ -671,6 +671,25 @@ its surface instead, once, and every run of that agent uses it:
 | **Entire desktop** | A whole monitor — your real mouse and keyboard. Pick which monitor if you have several. |
 | **Specific window** | One app window. Screenshots are cropped to it and clicks are offset into it, so the rest of your desktop is out of bounds. |
 | **Sealed browser** *(new in 0.3; renamed in 0.14)* | A dedicated Chrome sealed to one site, with its own saved sign-in. **Headless** by default — it runs offscreen, so your screen and mouse are never touched and you can keep working while the task runs. *New in 0.14:* on an executor with a display of its own it can instead be a **real browser window**. |
+| **Android device** *(new in 0.16)* | A phone or emulator, driven over `adb` — taps, swipes, Back and Home. Your own screen is never touched, and it works on a server with no screen at all. Set-up and everything specific to it: **[Android devices](android-devices.md)**. |
+
+### Android device
+
+*New in 0.16.* The agent works a **touch screen** instead of a pointer: `click` taps,
+`right_single` long-presses, `scroll` swipes, and `hotkey` takes device keys (`back`, `home`,
+`recents`) rather than desktop combinations.
+
+The device can be an emulator in a container or a phone on USB, and it does not have to be on
+the machine running SimpleClaw — `adb` reaches it over TCP.
+
+**One thing to know before you plan around it: there is no seal.** A sealed browser bounces
+navigation outside its origin; a phone does not. The containment is the device itself, so give
+an agent a device that holds only what it should see. Stored credentials also can't be filled
+into a phone — sign the device in yourself and let the session persist.
+
+Getting `adb`, running an emulator, filling in the four Scope fields, what each action does on
+a touch screen, and the full list of limitations are all on the
+**[Android devices](android-devices.md)** page.
 
 ### Sealed browser
 
@@ -735,8 +754,8 @@ unlike the agent you configured, with nothing anywhere to say so.
 The **User-Agent override** field is shown for the headless driver only: its whole purpose is
 the `HeadlessChrome` token, which a real browser window never sends in the first place.
 
-**Switching surface is a press, not a tab** *(0.13)*. The four pages under Scope — Capturing,
-Entire desktop, Specific window, Sealed browser — can all be opened and read without changing
+**Switching surface is a press, not a tab** *(0.13)*. The pages under Scope — Capturing,
+Entire desktop, Specific window, Sealed browser, Android device — can all be opened and read without changing
 anything. A **✓** marks the one the agent actually runs on, the others say they are a preview,
 and **Apply** is what moves the agent onto the surface you're looking at.
 
@@ -862,9 +881,11 @@ Reach for it when:
 
 Three things to know before planning around it:
 
-- **Only sealed-browser agents run there.** A container has no desktop, so a desktop- or
-  window-scope agent is refused rather than allowed to click into a blank screen. Set an
-  agent's [scope](#where-the-agent-works-scope) to a sealed browser before deploying it.
+- **Only sealed-browser and Android agents run there.** What a container lacks is a *screen*,
+  not a network: a browser is driven over the DevTools protocol and a phone over `adb`, so
+  neither needs one. A desktop- or window-scope agent is refused rather than allowed to click
+  into a blank screen. Set an agent's [scope](#where-the-agent-works-scope) to a sealed
+  browser or an [Android device](android-devices.md) before deploying it.
 - **Signing in works differently.** There's no persistent Chrome profile to "log in once"
   into, so an agent signs in on every run from credentials the platform supplies — and a site
   demanding MFA or a CAPTCHA still needs a person, who joins through the run's live link and
@@ -1237,7 +1258,7 @@ A few more appear only in the situations that call for them:
 | **Step delay** | Pause after every action | Default 0.5 s. Longer = easier to watch and interrupt. |
 | **Nav settle** | Extra pause after an action that navigates | Default 0.5 s, added on top of Step delay only after a click or an Enter-terminated entry, so the next screenshot isn't of the old page. Raise it for slow-loading sites. *From 0.14* it is also the **ceiling** on the wait the agent declares for itself — see [What the agent declares with each action](#what-the-agent-declares-with-each-action). |
 | **Max steps** | Cap on actions per run | Default 30. Stops runaway loops; increase for longer tasks. |
-| **Scope** | Which surface the agent works on | Whole monitor, a single window, or a sealed browser — see [Where the agent works](#where-the-agent-works-scope). |
+| **Scope** | Which surface the agent works on | Whole monitor, a single window, a sealed browser, or an [Android device](android-devices.md) *(0.16)* — see [Where the agent works](#where-the-agent-works-scope). |
 | **Driver** | How a sealed browser is captured and driven | *New in 0.14.* Per agent (**Scope → Sealed browser**). **Headless (CDP)** by default — the page only, offscreen. **Native window** is a real browser window, and needs an executor with a display of its own — see [The driver](#the-driver-headless-or-a-real-window). |
 | **Max parallel slots** | How many tasks **one** agent may run at once, and therefore how many this machine runs at once | *New in 0.13; became the only setting in 0.14.2, when the machine-wide **Settings → General → Concurrency** was removed.* Per agent (**Scope → Sealed browser**), up to 4, each slot its own browser profile. A task waits only when its own agent is full — see [Running more than one task at once](#running-more-than-one-task-at-once). |
 | **Re-planning** | Whether a stuck run may rewrite the rest of its own plan | *New in 0.13.* Per agent (**Planner → Planning**), **on** by default, after 3 tries at one step and at most 2 re-plans a run — see [When the plan turns out to be wrong](#when-the-plan-turns-out-to-be-wrong). |
@@ -1301,8 +1322,9 @@ SimpleClaw 0.14.x is still an early release:
   jobs, and a missed repeat isn't made up afterwards. They run in server mode too *(0.10)*, but
   entries live with the data, so several replicas sharing it each fire the same one: run one
   where schedules matter. See [Running a task later](#running-a-task-later-scheduling).
-- **A server runs browser agents only** — there is no desktop in a container, so the monitor
-  and window scopes are refused there. See [Server mode](server-mode.md).
+- **A server runs browser and Android agents only** — there is no desktop in a container, so
+  the monitor and window scopes are refused there. See [Server mode](server-mode.md) and
+  [Android devices](android-devices.md).
 - **The native browser driver needs a display of its own** *(0.14)* — so it runs on a deployment
   and not on your desktop, one native run per display (parallel slots need a display each, not
   just a profile each), and it cannot number a page's elements for the model the way the headless
