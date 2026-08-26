@@ -1,6 +1,6 @@
 # SimpleClaw — Agent API
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/agent-api.html)
@@ -132,6 +132,9 @@ error — nothing here can launch the app.
 | `PATCH /v1/agents/{id}` | *0.10.* Change fields on an agent already here — a partial, so anything not sent is untouched. `409` when `AUTOPLAY_AGENTS_READONLY` is set explicitly; `400` for `id`/`organization`, which travel by upload. |
 | `DELETE /v1/runs/{id}` | *0.10.* Delete a finished run's record — steps, frames, benchmark rows. `409` while it's still going, and `409` for a supervised demonstration unless `?force=1`. |
 | `GET /v1/runs/{id}/wait` | *0.11.* Blocks up to `?timeout=<seconds>` (default 30, max 120), then answers with the same body as `GET /v1/runs/{id}`. The polling twin of `/events`, for a caller with no SSE — see [Waiting for the answer, in one call](#waiting-for-the-answer-in-one-call). |
+| `POST /v1/agents/{id}/device-session` | *0.16.* Mint a link to a hands-on **device console** on that agent's Android device — install an app, sign into it, accept a dialog. `409` while a task is running. → [Android devices](android-devices.md#setting-the-device-up-by-hand-the-device-console) |
+| `GET /v1/cluster` | *0.16, cluster only.* The whole fleet from any node: nodes and free slots, queue depth per agent, singleton roles, dead letters, warnings. → [Cluster mode](cluster.md#what-a-client-has-to-know) |
+| `GET` `POST` `DELETE /v1/drain` | *0.16, cluster only.* Take a node out of service and put it back; `GET` is the pre-flight. `?node=<id>` acts on another node. |
 
 > **On the 0.9 routes.** An import always **creates** unless it asks to overwrite: a colliding
 > id gets a suffix rather than replacing an agent that may be mid-run. The response carries
@@ -435,6 +438,12 @@ never taught here, so the fix is to record a demonstration, not to try again.
 ## Choosing between several executors
 
 *New in 0.14.2.*
+
+> **Independent executors only.** If they share one Redis they are a **cluster**, and none of this
+> applies: submit to whichever node you can reach and it sorts itself out — there is no capacity to
+> compare, no executor to choose, and no `runId` → machine mapping to keep. Skip to
+> **[Cluster mode](cluster.md#what-a-client-has-to-know)**, which also covers the one route a
+> client must handle differently there.
 
 Several containers can serve the same agent — one per digital worker, or a pool of identical
 ones. A dispatcher in front of them has to pick, and plain `/v1/status` cannot answer the

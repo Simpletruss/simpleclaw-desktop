@@ -1,6 +1,6 @@
 # SimpleClaw — User guide
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/user-guide.html)
@@ -149,6 +149,10 @@ your goal ─► take a screenshot ─► ask the AI model for the next action
   runs due. See [Running a task later](#running-a-task-later-scheduling).
 - **Server picker** — in the title bar: which machine this window is looking at, **This
   computer** or a registered server. See [Pointing it at a server](#pointing-it-at-a-server).
+- **Cluster badge and page** *(new in 0.16)* — beside the picker, a badge saying whether the
+  machine you're looking at is standalone or **one node of a cluster**; clustered, it opens a
+  **Cluster** item on the sidebar showing the whole fleet. It appears only when there is a
+  cluster. See [Cluster mode](cluster.md#the-cluster-page).
 - **⚙ Settings** — model connection and behavior options.
 
 ## Running a task
@@ -687,6 +691,14 @@ navigation outside its origin; a phone does not. The containment is the device i
 an agent a device that holds only what it should see. Stored credentials also can't be filled
 into a phone — sign the device in yourself and let the session persist.
 
+**Setting the device up is a job for your own hands, once.** Apps to install, an account to sign
+into, permission dialogs to accept — press **📱 Open device console…** on the Scope tab and a page
+opens showing the device's screen, with your taps and typing going back to it. Whatever you leave
+on the device is what the agent's next run starts from, and it works the same whether the device is
+here or on a server. It refuses while a task is running, since nothing else would stop two things
+driving one screen.
+→ [The device console](android-devices.md#setting-the-device-up-by-hand-the-device-console)
+
 Getting `adb`, running an emulator, filling in the four Scope fields, what each action does on
 a touch screen, and the full list of limitations are all on the
 **[Android devices](android-devices.md)** page.
@@ -890,8 +902,11 @@ Three things to know before planning around it:
   into, so an agent signs in on every run from credentials the platform supplies — and a site
   demanding MFA or a CAPTCHA still needs a person, who joins through the run's live link and
   [takes the controls](#taking-control-mid-run).
-- **One run at a time, per instance,** exactly as in the app. More throughput means more
-  instances, not more parallelism inside one.
+- **Throughput comes from slots, then from machines.** One instance runs as many tasks at once as
+  the agents' own **Max parallel slots** add up to (*0.11.2*), each in its own process with its own
+  browser. Past what one box holds, *new in 0.16*, several instances can share **one queue**:
+  point them at the same Redis and a task submitted to any of them is started by whichever has a
+  free slot. → [Cluster mode](cluster.md)
 
 Deployment, configuration, secrets, and health checks →
 **[Server mode](server-mode.md)**. Read
@@ -955,6 +970,9 @@ Select a server and the window shows what that machine is doing:
 - **Run history** — its runs, replayable frame by frame, the same as a local one's.
 - **Scenarios** — what it has, and which agents each one needs.
 - **⏱ Scheduled** — what it has armed, and what's due next.
+- **Cluster** *(new in 0.16)* — if that machine is a node, the whole fleet it belongs to: every
+  node's state and free slots, the queues, and what's been given up on. Any node answers for all
+  of them, so the machine you picked is only the one you asked.
 
 The title bar names the machine the whole time, in a colour that doesn't blend in. That is
 deliberate: nearly everything about this feature is reversible, and a run started against the
@@ -975,6 +993,11 @@ wrong machine is not.
 - **Delete one of its runs** *(new in 0.10)*, from the trash button in **Run history** or the
   bulk **Clean up** — the delete goes to the machine that holds the run.
   → [Deleting a run](server-mode.md#deleting-a-run-from-a-remote-window)
+- **Drain a node, or put it back** *(new in 0.16)*, from the **Cluster** page — including a node
+  other than the one this window is connected to, since the instruction travels over Redis. You're
+  shown what draining it would mean first. → [Draining](cluster.md#taking-a-node-out-of-service-draining)
+- **Open a device console** *(new in 0.16)* on an Android device that machine can reach, and set it
+  up by hand. → [The device console](android-devices.md#setting-the-device-up-by-hand-the-device-console)
 
 ### What you can't
 
@@ -1306,10 +1329,10 @@ description, the agent's persona, or a skill. Full details and worked examples:
 
 ## Current limitations
 
-SimpleClaw 0.14.x is still an early release:
+SimpleClaw 0.16.x is still an early release:
 
-- **One surface per run** — an agent works on a monitor, a window, *or* a sealed
-  browser; it can't span several at once. A [scenario](#running-a-whole-process-scenarios)
+- **One surface per run** — an agent works on a monitor, a window, a sealed browser *or* an
+  [Android device](android-devices.md); it can't span several at once. A [scenario](#running-a-whole-process-scenarios)
   crosses systems by giving each *step* its own agent, not by widening one run.
 - **Scenario steps run in sequence, never in parallel** — and one pass at a time. Two steps
   that don't depend on each other still wait their turn.
@@ -1320,8 +1343,9 @@ SimpleClaw 0.14.x is still an early release:
   [Running more than one task at once](#running-more-than-one-task-at-once).
 - **Schedules need a process running** — they're timers inside SimpleClaw, not OS-level
   jobs, and a missed repeat isn't made up afterwards. They run in server mode too *(0.10)*, but
-  entries live with the data, so several replicas sharing it each fire the same one: run one
-  where schedules matter. See [Running a task later](#running-a-task-later-scheduling).
+  entries live with the data, so several *independent* replicas sharing it each fire the same one:
+  run one where schedules matter, or make them a [cluster](cluster.md), where the timers are held
+  by one node at a time *(0.16)*. See [Running a task later](#running-a-task-later-scheduling).
 - **A server runs browser and Android agents only** — there is no desktop in a container, so
   the monitor and window scopes are refused there. See [Server mode](server-mode.md) and
   [Android devices](android-devices.md).
@@ -1335,7 +1359,9 @@ SimpleClaw 0.14.x is still an early release:
   rewrites what a finished run says. See [Pointing it at a server](#pointing-it-at-a-server).
 - **A saved sign-in is tied to one machine** — the sealed browser's profile belongs to the
   computer and user account that created it, so it doesn't travel to a
-  server; a deployed agent signs in each run from injected credentials instead.
+  server; a deployed agent signs in each run from injected credentials instead. In a
+  [cluster](cluster.md) that means an agent signed in by hand effectively belongs to one node —
+  give it credentials, or pin it.
 - **Site sealing is a backstop, not a sandbox** — navigation away from the allowed
   origins is reversed after the fact, so treat it as a guard rail rather than
   enforced isolation.

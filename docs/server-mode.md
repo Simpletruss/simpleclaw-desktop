@@ -1,6 +1,6 @@
 # SimpleClaw — Server mode
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Cluster](cluster.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/server-mode.html)
@@ -39,17 +39,18 @@ the environment instead of a settings screen.
 9. [Letting the desktop app reach it](#letting-the-desktop-app-reach-it)
 10. [Configuration](#configuration)
 11. [Running more than one run at a time](#running-more-than-one-run-at-a-time)
-12. [The native browser driver](#the-native-browser-driver)
-13. [Driving an Android device](#driving-an-android-device)
-14. [Signing in without a person](#signing-in-without-a-person)
-15. [Signing in by hand, on a machine with no screen](#signing-in-by-hand-on-a-machine-with-no-screen)
-16. [Authentication](#authentication)
-17. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
-18. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
-19. [Running it somewhere real](#running-it-somewhere-real)
-20. [Security](#security)
-21. [Upgrading](#upgrading)
-22. [Limits](#limits)
+12. [More than one machine (cluster mode)](#more-than-one-machine-cluster-mode)
+13. [The native browser driver](#the-native-browser-driver)
+14. [Driving an Android device](#driving-an-android-device)
+15. [Signing in without a person](#signing-in-without-a-person)
+16. [Signing in by hand, on a machine with no screen](#signing-in-by-hand-on-a-machine-with-no-screen)
+17. [Authentication](#authentication)
+18. [Health, readiness, and shutdown](#health-readiness-and-shutdown)
+19. [Keeping the disk from filling up](#keeping-the-disk-from-filling-up)
+20. [Running it somewhere real](#running-it-somewhere-real)
+21. [Security](#security)
+22. [Upgrading](#upgrading)
+23. [Limits](#limits)
 
 ---
 
@@ -438,6 +439,8 @@ variables. Nothing set here is written back to disk.
 | **Credentials** | `AUTOPLAY_SECRET_<NAME>` — see [below](#signing-in-without-a-person) |
 | **Retention** | `AUTOPLAY_HISTORY_IMAGE_DAYS` (7), `AUTOPLAY_HISTORY_DAYS` (30), `AUTOPLAY_HISTORY_MAX_MB` (2048) |
 | **Storage** | `AUTOPLAY_STORE` (`file`\|`mongo`), `AUTOPLAY_MONGO_URI`, `AUTOPLAY_MONGO_DB`, `AUTOPLAY_FUNCTION_CACHE_DIR` |
+| **Android** *(0.16)* | `AUTOPLAY_ADB_HOST` — the default device for every phone agent here — and `AUTOPLAY_ADB_PATH`. See [Driving an Android device](#driving-an-android-device) |
+| **Cluster** *(0.16)* | `AUTOPLAY_REDIS_URL` — or `AUTOPLAY_REDIS_{HOST,PORT,PASSWORD,TLS,CLUSTER}` for a managed endpoint — plus `AUTOPLAY_NODE_ID`, `AUTOPLAY_NODE_URL`, `AUTOPLAY_CLUSTER_NS`, `AUTOPLAY_CLUSTER_AGENT_SYNC`. **Opt-in**: nothing set is a plain single-container executor, and setting *some* of it without a Redis endpoint is a startup failure rather than a fall back to standalone — see [Cluster mode](cluster.md) |
 
 > **Four variables were removed in 0.10** and need no replacement:
 > `AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`, `AUTOPLAY_ALLOW_RUN_DELETE`
@@ -512,9 +515,23 @@ run in a worker could not be taken over, a takeover pause was misreported as a m
 so could be killed by the watchdog, and a retiring worker killed its parked browser instead
 of closing it — which lost the sign-in it was holding)*.
 
-**Schedules are still a reason to run one replica.** Concurrency is within an instance;
-schedule entries live in the data directory, so N replicas sharing one still each arm the
-same timers.
+**Schedules used to be a reason to run one replica.** Concurrency is within an instance, and
+schedule entries live in the data directory, so N independent replicas sharing one directory each
+arm the same timers — and you get N runs. *From 0.16* that's what [cluster mode](cluster.md)
+removes: the schedule timers are a singleton role held by one node at a time.
+
+## More than one machine (cluster mode)
+
+*New in 0.16.* Everything above is one executor. Point several at the same Redis and they share
+**one queue**: a task is submitted to whichever node a caller can reach, and started by the first
+node with a free slot for that agent. There is no dispatcher to write and no `runId` → machine
+mapping to keep, a node dying costs only what it had already started, and the app grows a
+**Cluster** page that drains a node, shows the queues and flags the misconfigurations that
+otherwise look healthy.
+
+It's opt-in — no Redis configured and this is exactly the single-container executor described on
+this page. The setup, the six rules a fleet has to keep, and the one thing an API client must
+handle differently are all on **[Cluster mode](cluster.md)**.
 
 ## The native browser driver
 
@@ -608,6 +625,18 @@ that window, so a run submitted early waits rather than failing.
 **Phone runs are serialised.** There is no per-agent parallelism for this scope, so two phone
 agents take turns even when they drive different devices — unlike
 [browser agents](#running-more-than-one-run-at-a-time).
+
+**Setting the device up is a link.** A device almost always needs a person on it first — apps to
+install, an account to sign into, permissions to accept — and here there's no window to put its
+screen in. `POST /v1/agents/:id/device-session` mints a page that streams the device and tunnels
+your taps and keystrokes back over `adb`; from the desktop app it's **Scope → Android device →
+📱 Open device console…**. It's the phone's counterpart to
+[signing in by hand](#signing-in-by-hand-on-a-machine-with-no-screen), it refuses while a task is
+running, and it expires in minutes.
+→ [The device console](android-devices.md#setting-the-device-up-by-hand-the-device-console)
+
+**In a [cluster](cluster.md), a node with no device won't take phone work** — it advertises those
+agents as *cannot run here* rather than reading a task it can't begin.
 
 Set-up, the Scope fields, what each action does on a touch screen, and the full list of
 limitations — including that a phone scope has **no origin seal** and **cannot fill stored
@@ -709,7 +738,10 @@ What the link is, and is not:
   the agents mount (Azure Files SMB can't hold the symlinks Chrome creates). A sign-in
   survives runs and restarts of the process, but not a new revision or a replica move — mount
   storage that supports symlinks at `AUTOPLAY_DATA_DIR` if it must, or re-send a link. It also
-  means a multi-replica deployment needs the sign-in and the runs on the same replica.
+  means a multi-replica deployment needs the sign-in and the runs on the same replica. In a
+  [cluster](cluster.md) that's what `cluster.pinNode` is for — or give the agent
+  [credentials](#signing-in-without-a-person) so it signs itself in on any node, which is the
+  arrangement a fleet wants.
 
 ## Authentication
 

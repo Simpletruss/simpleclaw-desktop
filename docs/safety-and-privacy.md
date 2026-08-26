@@ -1,6 +1,6 @@
 # Safety & privacy
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/safety-and-privacy.html)
@@ -8,6 +8,13 @@
 
 SimpleClaw controls your real mouse and keyboard and sends pictures of your
 screen to an AI model. Please read this page before using it on real work.
+
+> **New in 0.16:** an agent can drive an **[Android device](android-devices.md)**, which has **no
+> origin seal** — the containment is the device — and a **device console** link is a live keyboard
+> on that device for whoever holds it. Several executors can also share one Redis
+> ([Cluster mode](cluster.md)), which puts the task queue on infrastructure outside any one of
+> them. Both are covered under
+> [Running it as a server](#running-it-as-a-server).
 
 > **New in 0.11.4:** a [Web APIs](web-apis.md) request can carry **Postman scripts, and they
 > run** — JavaScript that arrives in your workspace over git, or in somebody's collection
@@ -387,9 +394,12 @@ present and can hit `F9`. Here nobody is, so read this before deploying one.
 
 **What's different, in your favour**
 
-- **It can't touch a real desktop.** Only sealed-browser agents run in server mode, and a
-  desktop- or window-scope agent is refused rather than allowed to click into a blank virtual
-  screen. The blast radius is the sites the agents are sealed to.
+- **It can't touch a real desktop.** Only sealed-browser and — *from 0.16* —
+  [Android-device](android-devices.md) agents run in server mode, and a desktop- or window-scope
+  agent is refused rather than allowed to click into a blank virtual screen. For a browser agent the
+  blast radius is the sites it's sealed to. **For a phone agent it's the device itself**, which has
+  no seal and no way to fill a stored credential: give one a device holding only what it should see,
+  and sign that device in yourself.
 - **No secret at rest.** Model keys and sign-in credentials come from the environment or a
   mounted secret file, and agent files are held read-only so an injected key can't be written
   back into one.
@@ -420,6 +430,31 @@ present and can hit `F9`. Here nobody is, so read this before deploying one.
   forbid the privileges it needs. The compensating controls are a non-root user, the origin
   seal on the agent's browser, and a scrubbed environment at browser launch — real, but not
   the same as the sandbox.
+- **A device console link is a keyboard on a real device** *(0.16)*. Whoever holds one can tap
+  anything on the device it opens, without your API credential — the same trade the sign-in link
+  makes. It expires in minutes, refuses while a task is running, and records nothing: no
+  screenshots, no keystrokes.
+
+### What a cluster shares, and what it doesn't
+
+*New in 0.16.* [Cluster mode](cluster.md) moves the dispatch queue into Redis, so it's worth being
+precise about what ends up there.
+
+- **In Redis:** the task queue (agent id, goal and the caller's identity), a ledger row per run —
+  its state, step count and result — heartbeats, and, when agent replication is on, the agent
+  bundles themselves. Treat the Redis as holding the same sensitivity as the goals your callers
+  submit, and the answers they get back.
+- **Not in Redis:** screenshots and step history, which stay in the storage the nodes share, and
+  **no secrets at all**. A published agent bundle is stripped of API keys, phone credentials and
+  the voiceprint, and a node applying one puts its own stored values back for every blanked field —
+  so a key stays in the environment that injects it. The browser profile, which holds live
+  sessions, never travels either.
+- **One namespace is the whole tenancy boundary between two deployments on one Redis.** A rehearsal
+  pointed at production's Redis without its own `AUTOPLAY_CLUSTER_NS` reads production's queue and
+  runs production's tasks. Nothing else separates them.
+- **Every node presents the same API token**, so the credential's blast radius is the fleet rather
+  than one machine — and a node's own URL has to be reachable by clients for live view and takeover
+  to work. Front the fleet the way you'd front one executor.
 
 ## Pointing it at a server
 

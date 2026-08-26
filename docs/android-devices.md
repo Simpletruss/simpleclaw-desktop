@@ -1,6 +1,6 @@
 # SimpleClaw — Android devices
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/android-devices.html)
@@ -27,9 +27,10 @@ carry on working, and it can happen on a server with no screen at all.
 5. [Step 4 — run your first task](#step-4--run-your-first-task)
 6. [How the agent operates a phone](#how-the-agent-operates-a-phone)
 7. [Preparing the device](#preparing-the-device)
-8. [In server mode](#in-server-mode)
-9. [What this scope does *not* do](#what-this-scope-does-not-do)
-10. [Troubleshooting](#troubleshooting)
+8. [Setting the device up by hand (the device console)](#setting-the-device-up-by-hand-the-device-console)
+9. [In server mode](#in-server-mode)
+10. [What this scope does *not* do](#what-this-scope-does-not-do)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -93,10 +94,24 @@ docker run --rm --privileged alpine ls /dev/kvm
 ```
 
 - **Linux** — present.
-- **Windows 11 with the WSL2 backend** — present. WSL2 does nested virtualisation, so the
-  container works here unchanged.
-- **macOS** — absent. Docker Desktop's VM exposes no KVM, so run the emulator outside Docker
-  (Android Studio's own emulator is fine) and point SimpleClaw at it over TCP.
+- **Windows 11 with the WSL2 backend** — **absent until the module is loaded**, then present. WSL2
+  genuinely does nested virtualisation; what's missing is that Docker Desktop's own
+  `docker-desktop` distro doesn't load `kvm_intel`/`kvm_amd` at boot, so `/dev/kvm` isn't there at
+  all. One command fixes it:
+
+  ```sh
+  wsl -d docker-desktop -e sh -c "modprobe kvm_intel"   # kvm_amd on an AMD CPU
+  ```
+
+  **It does not survive a Docker Desktop or Windows restart**, so re-run it whenever you bring the
+  emulator up. This is worth knowing rather than rediscovering: a machine that worked yesterday
+  fails today with nothing a person can see having changed, and the emulator's own error names
+  QEMU rather than a kernel module. If the distro reports neither `vmx` nor `svm` in
+  `/proc/cpuinfo`, nested virtualisation is off altogether — check the BIOS/UEFI and
+  `nestedVirtualization` in `%USERPROFILE%\.wslconfig`; a `modprobe` can't fix that one.
+- **macOS** — absent, with nothing to load. Docker Desktop's VM exposes no KVM at all, so run the
+  emulator outside Docker (Android Studio's own emulator is fine) and point SimpleClaw at it over
+  TCP.
 - Also absent on any machine with virtualisation disabled in firmware.
 
 Without KVM an emulator falls back to full CPU emulation and takes minutes per screen, which
@@ -256,20 +271,78 @@ package exactly when that happens.
 ## Preparing the device
 
 A device that a person has never used is not ready for an agent. Spend five minutes on it once
-and every later run is shorter and steadier.
+and every later run is shorter and steadier. Do it on the device itself if you can reach it, and
+through the [device console](#setting-the-device-up-by-hand-the-device-console) if you can't.
 
 - **Clear the first-run wizards.** Open the apps the agent will use and tap through their
   welcome screens yourself. Chrome's *"Welcome to Chrome — Add account to device"* page
   otherwise greets every single run.
 - **Sign in where you can.** The session persists on the device, so the agent starts past the
   login. See [the limitation below](#what-this-scope-does-not-do) for why this matters more
-  here than for a sealed browser.
+  here than for a sealed browser — a phone agent can't fill a stored credential, so a sign-in
+  you do once is the only sign-in there is.
 - **Turn off anything that moves on its own.** Screen savers, animated wallpapers and
   auto-rotate all make the screen change under the agent.
 - **Keep the screen awake.** *Developer options → Stay awake* while charging.
 - **Emulator state lives in the container.** It survives a restart, but `docker compose down`
   and back up gives you a fresh device with all the wizards again. Use a volume, or expect to
   redo this.
+
+---
+
+## Setting the device up by hand (the device console)
+
+All of the above needs **hands on the device** — and the device is usually not somewhere you can
+walk up to. It's in a container, or in another region, and on a server there is no window to put
+an emulator's own screen in. So the hands become **a link**.
+
+Open the agent, **Scope → Android device**, press **Apply**, then **📱 Open device console…**.
+A page opens in your browser showing the device's screen; your pointer and keystrokes go back to
+it as taps, swipes and text. Install an app, sign into it, accept a permission dialog, trust a
+certificate — **whatever you leave on the device is what the agent's next run starts from.** It is
+the same device, not a copy.
+
+It works the same whether the device is on this computer or on a server the window is
+[pointed at](user-guide.md#pointing-it-at-a-server) — unlike a browser profile, which is a
+directory on a disk and so has two different answers. A device is reached over TCP from wherever
+the agent runs, so a link is the honest answer in both cases. From a script:
+
+```sh
+curl -X POST https://autoplay.example.com/v1/agents/work-order-bot/device-session \
+  -H "Authorization: Bearer $AUTOPLAY_API_TOKEN"
+# 201 {"session":{"id":"dev_…","agentId":"work-order-bot","serial":"emulator:5555",
+#                "viewport":{"width":1080,"height":2340},"ready":true,"expiresAt":…},
+#      "url":"https://autoplay.example.com/device/dev_…?t=…"}
+```
+
+The page names the **serial it actually bound**, which matters more here than for a browser
+profile: one executor can reach several devices, and the address in an agent's scope is a request
+rather than an answer — an empty one resolves against whatever happens to be attached. It also
+gives you the three buttons a keyboard hasn't got: **‹ Back**, **Home** and **Recents**.
+
+When you're done, press **Done — release the device** so a run can use it again.
+
+What the console is, and is not:
+
+- **It refuses while a task is running.** There is no lock that would stop two things driving one
+  device the way Chrome's profile lock does, so a run and a person tapping the same screen would
+  simply corrupt each other's work. Stop the run first.
+- **It is not a mid-run takeover.** The sealed browser's
+  [hover-and-take-the-controls](user-guide.md#taking-control-mid-run) has no phone equivalent yet:
+  this is a *setup* tool, used between runs.
+- **The frame refreshes about twice a second.** Fine for installing and signing in; wrong for
+  anything that moves.
+- **Typing carries ASCII only**, for the same reason [the agent's does](#typing-is-ascii-only).
+  For other characters, tap the device's own on-screen keyboard rather than using yours.
+- **It is a credential.** The link expires in minutes and is a live remote control on that device
+  while it lasts. Nothing is recorded: no screenshots, no keystrokes.
+- **Anything the executor can reach.** A phone on USB, an emulator sidecar, a device farm — it all
+  goes over `adb`. That's the point: an emulator image's own noVNC page (`:6080`) exists only
+  because that one image happens to bundle a VNC server, and nothing else does.
+
+> A remote server that predates this — or has no device to reach — reports no console. The button
+> still works and says which of the two it is; the fallback is `adb` from a machine that can reach
+> the device (`adb connect`, then `adb install`).
 
 ---
 
@@ -298,6 +371,16 @@ Reach it by **service name**, not `localhost` — see
 which rules out most managed container platforms; a VM you control, or a machine on your own
 hardware, is the realistic home for this.
 
+Set the device up through the
+[device console](#setting-the-device-up-by-hand-the-device-console) — that's what it exists for:
+a deployed executor has no window to put an emulator's screen in.
+
+**In a [cluster](cluster.md), a node with no device won't take phone work.** Dispatch is
+pull-based, so any node with a free slot would otherwise read a phone task and fail it for want of
+a device. A node with nothing attached and no `AUTOPLAY_ADB_HOST` therefore advertises its phone
+agents as *cannot run here*, and the Cluster page shows which nodes those are.
+→ [Android devices in a cluster](cluster.md#android-devices-in-a-cluster)
+
 ---
 
 ## What this scope does *not* do
@@ -313,11 +396,14 @@ oversights waiting to be discovered mid-run.
   a phone agent has no safe way to enter a password: typing one as an ordinary action would
   write it into the step record and back into the model's context. **Sign the device in
   yourself** and let the session persist.
-- **No live view or takeover.** There is no in-app equivalent of the sealed browser's
-  hover-and-take-the-controls. An emulator container's noVNC page (`:6080`) is the stopgap —
-  you can watch, and drive it yourself, in a browser.
+- **No takeover mid-run.** The sealed browser's hover-and-take-the-controls has no phone
+  equivalent. You can drive the device by hand *between* runs — that's the
+  [device console](#setting-the-device-up-by-hand-the-device-console) — but not while one is
+  going, and the console refuses while a task is running for exactly that reason.
 - **Phone runs take turns.** Unlike a sealed browser there is no *Max parallel slots*, so two
-  phone agents are serialised even when they drive different devices.
+  phone agents are serialised even when they drive different devices. In a
+  [cluster](cluster.md#android-devices-in-a-cluster) that means a phone agent's throughput scales
+  with nodes-and-devices rather than with slots.
 - **Typing is ASCII-only**, as above.
 - **Held drags are not available.** `adb` submits a swipe as one complete gesture, so the
   observe-and-step drag a desktop agent can do (pull a slider, look, pull again) has no
@@ -340,6 +426,23 @@ runs — see [Which host is the device on?](#which-host-is-the-device-on)
 **`Android device … connected but never finished booting`** — `adb` reached the device before
 Android was up, and it never got there. Watch the emulator's own console; on a machine without
 KVM, boot can genuinely take longer than the timeout.
+
+**The emulator container exits naming QEMU, on Windows** — `/dev/kvm` isn't there. The
+`docker-desktop` distro doesn't load the module at boot and doesn't keep it across a restart, so
+this is the same machine that worked yesterday. Run
+`wsl -d docker-desktop -e sh -c "modprobe kvm_intel"` and bring it up again — see
+[Option A](#option-a--an-emulator-in-a-container).
+
+**The device console won't open** — three reasons, and it says which: **a task is running** on that
+device (stop it first — nothing stops two things driving one screen, so it's refused rather than
+allowed to corrupt the run), the agent's **applied** scope isn't Android (press **Apply**, not just
+open the tab), or the executor can't reach a device at all.
+
+**The device console link stopped working** — it expires in minutes, by design. Press the button
+again.
+
+**The console's screen doesn't keep up** — it refreshes about twice a second. It's built for
+installing and signing in, not for watching something animate.
 
 **`N Android devices are attached`** — set **Device serial** to say which one this agent
 drives. Picking one arbitrarily would give two runs of the same agent two different phones

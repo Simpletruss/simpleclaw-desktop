@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/troubleshooting.html)
@@ -123,10 +123,10 @@ message rather than pass its probes and fail on the first real request.
 | Symptom | Likely cause / fix |
 |---------|--------------------|
 | `no display available — start Xvfb before Electron` | Electron needs an X server on Linux even with no windows. The image's entrypoint starts one; you'll only see this running the entry point yourself, or with a broken entrypoint. |
-| `no browser-scope agent` at startup | The active organization has no agent that could run here — desktop and window scopes are refused in server mode. Either point `AUTOPLAY_ACTIVE_ORG` at the org that has your browser agents, or change the agent's [scope](user-guide.md#where-the-agent-works-scope). |
-| `no model API key for: <agent>` at startup | A browser-scope agent in the active org has no key, in its own file or from the environment. Set `AUTOPLAY_MODEL_API_KEY` (or `_FILE`) — it applies to every agent. |
+| `no browser- or phone-scope agent` at startup | The active organization has agents and none of them can run here — desktop and window scopes are refused in server mode. Point `AUTOPLAY_ACTIVE_ORG` at the org holding your sealed-browser or [Android](android-devices.md) agents, or change the agent's [scope](user-guide.md#where-the-agent-works-scope). An organization with **no** agents at all is only a warning: it waits for an upload. |
+| `no model API key for: <agent>` at startup | A runnable agent in the active org has no key, in its own file or from the environment. Set `AUTOPLAY_MODEL_API_KEY` (or `_FILE`) — it applies to every agent. |
 | It starts, then every run `401`s on the first model call | An `AUTOPLAY_MODEL_*` variable is overriding the key in `agent.json`, and it's the wrong one. The overlay always wins; the startup log names which variables are overriding what. |
-| `422` from `POST /v1/runs` | That agent's scope isn't a sealed browser, or it asks for the native driver this executor can't serve (0.14 — the response says which). `GET /v1/capabilities` greys out the ones that can't run here. |
+| `422` from `POST /v1/runs` | That agent's scope can't run here — a desktop or window scope, a native driver this executor can't serve (0.14), or *(0.16)* an [Android](android-devices.md) agent on a node with no device. The response says which, and `GET /v1/capabilities` greys them out. |
 | `501` from `POST /v1/window/show` | Expected — a headless executor has no window. Use the run's live link instead. |
 | Refuses to start, complaining about the bind and the token | It won't publish a non-loopback port protected only by a token it generated itself, because nothing outside the process could know it. Set `AUTOPLAY_AUTH_MODE` with a real credential. |
 | Startup names a half-configured setting | `jwt` mode needs public key, issuer *and* audience; `AUTOPLAY_STORE=mongo` needs both URI and database. Half of either is a hard stop rather than a silent fallback. |
@@ -138,7 +138,7 @@ message rather than pass its probes and fail on the first real request.
 | Agent files got rewritten or deleted | `AUTOPLAY_AGENTS_READONLY` was turned off against a real mount. Don't — migration state lives in the container, so each start looks like a first start and a writable roster pass rewrites the set. Restore from a copy. |
 | My desktop run history disappeared | Retention swept the mount. The defaults (7-day screenshots, 30-day sessions, 2 GB) apply to whatever is behind it — set all three to `0` for a folder you also use from the app. |
 | Scheduled tasks never fire | From 0.10 schedules run in every mode and `AUTOPLAY_SCHEDULER` is gone, so check the entry itself and that the process stayed up. On an older build, that variable was required. |
-| One scheduled task ran several times | Several replicas share one data directory, so each armed the same timer. Run **one** replica where schedules matter. |
+| One scheduled task ran several times | Several *independent* replicas share one data directory, so each armed the same timer. Run **one** replica where schedules matter — or make them a [cluster](cluster.md) *(0.16)*, where the timers are a singleton role held by one node. |
 | Chrome dies instantly with `Failed to create … SingletonLock: Permission denied` | The browser profile is on storage that refuses symlinks (Azure Files and other SMB shares). From 0.10 profiles live under `AUTOPLAY_DATA_DIR/browser-profiles`, not in the mounted `orgs/` — put *that* path on storage that allows symlinks, or leave it in the container. |
 | A run stalls on a login page | Unattended sign-in can't pass MFA or a CAPTCHA. Either sign the agent in once over a [sign-in link](server-mode.md#signing-in-by-hand-on-a-machine-with-no-screen) (*0.11.2*), or open the run's live link and [take the controls](user-guide.md#taking-control-mid-run). Both need `AUTOPLAY_PUBLIC_URL` set, or no link is handed out. |
 | A sign-in link answers `409` | Chrome locks a profile directory, so a link can't open while a run is using that agent's browser or a warm one still holds it. Wait for the run, or stop it. |
@@ -171,6 +171,37 @@ first — it probes the URL, then the token, then uploads, and names which one f
 | Deleting a run was refused | A run still in flight is refused until it's stopped, and a **supervised demonstration** needs the extra confirmation (type *Yes*) because the planner learns from it. |
 | Arming a schedule answers `501` | An older build without unconditional schedules — it needed `AUTOPLAY_SCHEDULER=on`. From 0.10 the route is always there. |
 | It reopened pointed at this computer | Deliberate — the selection isn't persisted, so you can't be left unknowingly pointed at production. |
+
+## Cluster mode (0.16)
+
+For a fleet sharing one Redis ([Cluster mode](cluster.md)). As in server mode, most of these are
+**startup** failures on purpose: a node that came up misconfigured would look healthy and behave
+wrongly.
+
+| Symptom | Likely cause / fix |
+|---------|--------------------|
+| `AUTOPLAY_NODE_ID is set, but no Redis endpoint is` | A half-configured cluster, refused deliberately — otherwise this node would come up standalone, invisible to the fleet, accepting work nobody else can see. Add the Redis endpoint, or remove the cluster-only variables to run standalone on purpose. |
+| `AUTOPLAY_REDIS_URL and AUTOPLAY_REDIS_HOST are both set` | Two connection specifications in one environment. Keep the URL for self-hosted Redis, the separate variables for a managed endpoint. |
+| An auth failure against a Redis that is plainly reachable | A managed access key pasted into a `rediss://` URL — it's base64, and the parse is wrong in a way that looks like bad credentials. Use `AUTOPLAY_REDIS_HOST` + `AUTOPLAY_REDIS_PASSWORD`. |
+| A bare `MOVED 3687 10.0.0.4:8501` | The endpoint is a sharded Redis cluster and the topology detection got it wrong. Set `AUTOPLAY_REDIS_CLUSTER=1`. |
+| `401` from one node, fine on another | The nodes have different tokens. `AUTOPLAY_API_TOKEN` must be **set and identical** everywhere; left unset, each node mints its own and "submit to any node" stops being true. |
+| A `401` right after a redirect | `/live`, `/input` and `/takeover` answer `307` to the node owning the run, and `Authorization` doesn't survive a cross-origin redirect. Read `executorUrl` and go there yourself, or re-attach the header. → [the one difference](cluster.md#the-one-thing-a-client-must-handle-differently) |
+| `503` from `/live`, `/input` or `/takeover` | The owning node advertises no `AUTOPLAY_NODE_URL`, so there is nowhere to redirect to. It says so rather than sending you to a host nobody can reach. |
+| Tasks queued and nothing running them | Read **Worth fixing** on the Cluster page. Either no online node supports that agent — which never resolves on its own — or every node that does is full, which does. |
+| The Cluster page warns that nodes disagree about the roster | The nodes aren't reading the same agents directory, so one runs a stale copy of an agent. Mount the same `orgs` directory on all of them, and the whole of it. |
+| An agent starts at a login page on some nodes | Its sign-in lives in one node's Chrome profile, which can't be copied. Give the agent [credentials](server-mode.md#signing-in-without-a-person), or set `cluster.pinNode`. |
+| A run came back `owner-lost` | The node holding it died or was partitioned from Redis, and that agent's `interruptPolicy` is `fail` — the default, because re-running a task that already submitted something creates a second one. Set `restart` only for idempotent work. |
+| `429` with `retryAfterSeconds` on submit | 100 tasks are already waiting for that agent, which is the ceiling. Add capacity, or slow the caller down. |
+| A node reappears under a new name after each restart | `AUTOPLAY_NODE_ID` is unset and defaulting to a container id. Set it to something stable. |
+| A rehearsal ran production's tasks | It shared production's Redis with no `AUTOPLAY_CLUSTER_NS` of its own. That prefix is the only thing separating two deployments. |
+| A Redis restart lost queued tasks | Persistence was off. `--appendonly yes`, or the equivalent setting on a managed service — this is the one data-loss surface the design has. |
+| The **Cluster** item isn't in the sidebar | This computer isn't a node and the server it's pointed at isn't one either. It appears only when there's a cluster; the title-bar badge says which state you're in. |
+| **Drain** on another node isn't offered | That server predates acting on a peer, and would drain *itself* if asked — so only the connected node's button is shown, with a note. Update it. |
+| A phone agent is *cannot run here* on some nodes | Correct, and deliberate *(0.16)*: a node with no device attached and no `AUTOPLAY_ADB_HOST` doesn't take phone work, rather than reading a task it can't begin. → [Android devices in a cluster](cluster.md#android-devices-in-a-cluster) |
+
+> **Android device problems** — `adb` not found, a device that never finishes booting, a console
+> that won't open, taps landing off — have their own list on
+> [Android devices](android-devices.md#troubleshooting).
 
 ## Web APIs (0.11 and later)
 

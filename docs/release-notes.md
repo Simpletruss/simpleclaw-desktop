@@ -1,6 +1,6 @@
 # SimpleClaw — Release notes
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/release-notes.html)
@@ -10,14 +10,85 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.15.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.16.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.15 — Every send you made, kept
+## 0.16 — A fleet, and a phone
 
 *Current release.*
+
+**Several executors can share one queue.** Point them at the same Redis and they stop being
+separate machines a caller has to choose between: a task is submitted to **whichever node you can
+reach**, appended to a queue every node reads, and started by the first node with a free slot for
+that agent. There is no dispatcher to write, no `runId` → machine mapping to keep, and no capacity
+to compare before sending work. → [Cluster mode](cluster.md)
+
+**A node dying costs only what it had already started.** Work that hasn't started isn't inside any
+node — it's in Redis, and another node reads it. Nothing is handed over, because nothing is held.
+What a dead node *was* running is the agent's decision: `fail` (the default) marks the task
+owner-lost for a person to look at, `restart` runs it again from the start, and it's opt-in per
+agent because re-running a task that already created a work order creates a second one.
+→ [When a node dies](cluster.md#when-a-node-dies)
+
+**A Cluster page that manages the whole fleet**, from whichever node you happen to be connected
+to — every node answers identically, so the page never fans out. Nodes with their state, version
+and free slots per agent; queue depth and how long the oldest task has waited; who holds the
+schedule timers, the reaper and the history sweep; what's been given up on. Plus **Drain** and
+**Take work again**, with a pre-flight that says what draining this node would mean — including
+the one case worth stopping for, an agent no other node can run.
+→ [The Cluster page](cluster.md#the-cluster-page)
+
+**The misconfigurations that used to be invisible now have a place they're written down.** Every
+serious way to get a cluster wrong leaves it looking healthy and behaving wrongly — a drifted
+agents mount, a node nothing can redirect to, an agent whose sign-in exists on one machine out of
+three, tasks queued for an agent no online node can run. None of them raise anything, so the page
+collects them into **Worth fixing**. In the same spirit, a **half-configured** cluster refuses to
+start rather than coming up as a standalone executor invisible to the fleet.
+→ [What every node needs](cluster.md#what-every-node-needs)
+
+**Publish an agent to any node and the fleet has it.** Editing one anywhere replicates it
+everywhere, and a node joining with an empty disk pulls the whole roster at boot. **Secrets never
+travel**: the bundle is stripped, and a node applying it puts its own stored values back — so a
+key stays in the environment that injects it. → [Agents replicate themselves](cluster.md#agents-replicate-themselves)
+
+**Cluster mode is opt-in, and standalone is unchanged.** Configure Redis and the process is a node;
+don't, and it's exactly the executor it was — which is what the desktop app runs on. One node is a
+perfectly good cluster, so a single container can have the fleet view and the drain button without
+becoming a fleet.
+
+**An agent can drive an Android device.** A fourth scope, alongside Entire desktop, Specific window
+and Sealed browser: an emulator in a container or a phone on USB, driven over `adb`. The agent
+works a touch screen — `click` taps, `right_single` long-presses, `scroll` swipes, `hotkey` takes
+device keys like `back` and `home` rather than desktop combinations — and `launch_app` opens an app
+by name against what's actually installed. Your own screen is never involved, and it runs on a
+server with no screen at all. → [Android devices](android-devices.md)
+
+**And a device console for the setting-up.** A device almost always needs a person on it before any
+run is worth starting: apps to install, an account to sign into, permission dialogs to accept. On a
+desktop that's what an emulator's window is for; a deployed executor has no window, and the device
+isn't even in the same container. So it's a **link** — the same shape as *log in once* for a
+browser profile. Your pointer and keystrokes reach the real device, and whatever you leave on it is
+what the next run starts from. It refuses while a task is running, because nothing else would stop
+two things driving one screen.
+→ [The device console](android-devices.md#setting-the-device-up-by-hand-the-device-console)
+
+**Two honest limits on phone scope**, both worth reading before planning around it: **there is no
+seal** — the containment is the device itself, so give an agent a device holding only what it
+should see — and **stored credentials can't be filled**, because typing a password as an ordinary
+action would write it into the step record. Sign the device in yourself.
+→ [What this scope does not do](android-devices.md#what-this-scope-does-not-do)
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.16.0** | Cluster mode, the Cluster page, agent replication, the Android device scope and the device console. |
+
+---
+
+## 0.15 — Every send you made, kept
 
 **The API client remembers every Send you made.** A request is a single mutable file: the moment
 you change a header the previous version is gone, and the response that went with it was never
