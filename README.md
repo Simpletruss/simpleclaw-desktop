@@ -106,18 +106,16 @@ repository**, so sharing it with your team is Save / Get changes / Share, with c
 as *"which version of this request?"* rather than as a text merge. Credentials can't be
 committed: files carry `{{secret:NAME}}`, values live in the OS credential store or the
 environment, and a pre-commit scan refuses anything that slips through. In CI it's
-`git clone && npm run apitest` — plain Node, no display. A **scenario step** can now be a
-saved request, so one pass can create a record over the API and then have an agent check the
-real screen shows it; and an agent can call your **saved requests by name** instead of
-composing a URL a web page could steer. See [Web APIs](docs/web-apis.md) and
+`git clone && npm run apitest` — plain Node, no display. An agent can call your **saved
+requests by name** instead of composing a URL a web page could steer. See [Web APIs](docs/web-apis.md) and
 [Release notes](docs/release-notes.md).
 
 **From 0.10 — fix a deployment where it runs, and talk to it.** Clicking an agent on a remote
 server now opens the **same editor** a local one gets: correct its persona or its start URL in
 place, without going back to the laptop that authored it. Its secrets stay on that machine, and
 a deployment can still declare its agent files off limits. Runs can be **deleted** wherever they
-live — with a second confirmation for the supervised demonstrations the planner learns from. Four
-deployment switches are **gone** (`AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`,
+live — with a second confirmation for the supervised demonstrations the planner learns from. Three
+deployment switches are **gone** (`AUTOPLAY_ALLOW_AGENT_IMPORT`,
 `AUTOPLAY_ALLOW_RUN_DELETE`, `AUTOPLAY_SCHEDULER`): uploads, deletes and schedules just work, and
 schedules now run in server mode too. And SimpleClaw **listens and speaks** — a mic button
 dictates a task, a wake word steers a run in flight, and the agent can answer through your
@@ -129,23 +127,13 @@ speakers, all from one pair of speech endpoints. See
 stopped being two separate things. A **server picker in the title bar** chooses which machine
 the window is looking at — **This computer**, or any server you've registered under
 **⚙ Settings → Run servers** — and the pages don't change, only where their data comes from.
-Pointed at a deployment you see its agents, its run history, its scenarios and its schedules;
-you can start a run or a whole scenario pass there and watch it live; and you can **send an
+Pointed at a deployment you see its agents, its run history and its schedules;
+you can start a run there and watch it live; and you can **send an
 agent to it** from **Agents → General → Upload to a remote server** instead of copying folders
 around. Agents are still authored on the machine that owns them and pushed — an upload creates
 rather than overwriting unless you ask it to. Underneath, both modes
 are now one build and one runtime: the same startup, the same configuration, the same API, the
 same web UI. See [Pointing it at a server](docs/user-guide.md#pointing-it-at-a-server).
-
-**From 0.8 — one saved process, several agents.** A **scenario** is an ordered list of steps
-run as a single pass, and each step now names **which agent runs it** — so a process that
-starts in a client portal and finishes in a staff console is one scenario instead of two you
-sequence by hand. Steps hand values to each other: a step declares what it must report
-(*the bundle reference*), and a later step writes `{{bundle_ref}}` in its task. Describe the
-whole objective and **Compose** divides it into steps and routes each one for you. A pass runs
-without a window open — from the scheduler, or over the API with
-`POST /v1/scenarios/{id}/run`. See
-[Running a whole process](docs/user-guide.md#running-a-whole-process-scenarios).
 
 **From 0.7 — it can run as a server.** SimpleClaw doesn't have to be an app on somebody's
 desktop. It can run **headless** — no window, nobody watching — exposing only its API, and it
@@ -257,7 +245,8 @@ More → [Safety & privacy](docs/safety-and-privacy.md).
 |-------|--------------|
 | [🌐 Website](https://simpletruss.github.io/simpleclaw-desktop/) | The polished overview and hub. |
 | [🚀 Getting started](docs/getting-started.md) | Install, connect your model, first task. |
-| [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, scenarios, and tips. |
+| [📖 User guide](docs/user-guide.md) | Interface, settings, actions, scopes, and tips. |
+| [🗃 Records & watchdogs](docs/records-and-watchdogs.md) | Work through a thousand records one at a time, and watch a page for the ones that are new (0.18 and later). |
 | [🔗 Web APIs](docs/web-apis.md) | The built-in API client: import from Postman, send and test requests, share the workspace as a git repo (0.11 and later). |
 | [🔌 Agent API](docs/agent-api.md) | Let another AI agent hand work to SimpleClaw (0.4 and later). |
 | [🐳 Server mode](docs/server-mode.md) | Run it headless in a container — deployment, configuration, secrets (0.7 and later). |

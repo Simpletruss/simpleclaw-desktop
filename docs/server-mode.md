@@ -1,6 +1,6 @@
 # SimpleClaw — Server mode
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Cluster](cluster.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Records & watchdogs](records-and-watchdogs.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Cluster](cluster.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/server-mode.html)
@@ -106,10 +106,10 @@ replaces fields as they're read, and nothing is written back. That's what lets t
 treat its own storage as disposable and keep no secret at rest.
 
 **Except for what arrives from a desktop window, which needs nothing set** *(changed in 0.10)*.
-Three writes reach in from outside: an **uploaded** agent or scenario, an **edit** to an agent
+Three writes reach in from outside: an **uploaded** agent, an **edit** to an agent
 already here, and **deleting** a finished run's record. All three used to be off behind a
-variable (`AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`,
-`AUTOPLAY_ALLOW_RUN_DELETE`); all three are now simply available, because every deployment
+variable (`AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_RUN_DELETE`); all three are now
+simply available, because every deployment
 wanted them and what the flags produced in practice was a `501` where the app had a working
 button. What the read-only overlay above still protects is untouched: an upload is built
 entirely from the caller's bundle, and an edit is applied to the record **on disk** rather than
@@ -129,13 +129,6 @@ tasks at once ([concurrency](#running-more-than-one-run-at-a-time)), so a replic
 what you were short of. A scheduled run is an ordinary queued job (a `runId`, followable,
 stoppable, counted against `AUTOPLAY_MAX_QUEUE`) and waits its turn rather than being skipped
 when something else is running.
-
-**Scenarios run here too** *(0.8)*. A [scenario](user-guide.md#running-a-whole-process-scenarios)
-saved in the desktop app travels with the agents you mount, and
-[`POST /v1/scenarios/{id}/run`](agent-api.md#running-a-whole-scenario) runs its steps across
-its agents with nothing on screen. The same rule as above applies per step: a step naming a
-desktop-scope agent is refused before step 1, not discovered halfway through. Values the steps
-reference but never produce have to arrive as `params` — there's nobody here to be asked.
 
 **It refuses to start when it couldn't work.** No agent in the active organization that
 could actually run — no browser- or Android-scope agent, or one with no model API key — is a startup
@@ -276,8 +269,8 @@ so an image run with no mount behaves as it always did.
 Copying an `orgs` folder is the deployment-time answer. The everyday one is **Agents → General
 → Upload to a remote server**, which sends the same bundle the **Export** button writes to a
 file — the agent's config plus its attached MCP servers, its non-built-in skills, and its
-memory — straight to the server's import route. Scenarios go the same way, from the scenario
-page. It's the only route into a server that has none of your folders mounted.
+memory — straight to the server's import route. It's the only route into a server that has
+none of your folders mounted.
 
 Register the server once in **⚙ Settings → Run servers → Remote servers**; the fields and the
 **Check** probe are covered in [Pointing it at a server](user-guide.md#pointing-it-at-a-server).
@@ -295,7 +288,7 @@ curl -X POST https://autoplay.example.com/v1/agents/import \
 Four rules worth knowing before you rely on it:
 
 - **Nothing to switch on** *(changed in 0.10)*. This needed `AUTOPLAY_ALLOW_AGENT_IMPORT=1`
-  (and `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` for scenarios) until both flags were removed — an
+  until that flag was removed — an
   executor with no agents and no way to receive one is not a deployment anybody wanted, and the
   upload is how they arrive. **Check** still reports whether a server's *build* has the route, so
   an executor due an update says so up front rather than mid-upload.
@@ -310,8 +303,7 @@ Four rules worth knowing before you rely on it:
 - **`supported` in the response is the thing to read.** It answers *can this server actually
   run what you just sent* — a desktop-scope agent uploads fine and then can't run, because a
   container has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to
-  **Sealed browser** first. A scenario upload likewise names any agents it needs that aren't
-  there yet.
+  **Sealed browser** first.
 
 An executor is allowed to boot with **no agents at all** — that's its normal first state, and
 refusing would be a deadlock, since the only way to put an agent in is the route that needs the
@@ -442,8 +434,8 @@ variables. Nothing set here is written back to disk.
 | **Android** *(0.16)* | `AUTOPLAY_ADB_HOST` — the default device for every phone agent here — and `AUTOPLAY_ADB_PATH`. See [Driving an Android device](#driving-an-android-device) |
 | **Cluster** *(0.16)* | `AUTOPLAY_REDIS_URL` — or `AUTOPLAY_REDIS_{HOST,PORT,PASSWORD,TLS,CLUSTER}` for a managed endpoint — plus `AUTOPLAY_NODE_ID`, `AUTOPLAY_NODE_URL`, `AUTOPLAY_CLUSTER_NS`, `AUTOPLAY_CLUSTER_AGENT_SYNC`. **Opt-in**: nothing set is a plain single-container executor, and setting *some* of it without a Redis endpoint is a startup failure rather than a fall back to standalone — see [Cluster mode](cluster.md) |
 
-> **Four variables were removed in 0.10** and need no replacement:
-> `AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_SCENARIO_IMPORT`, `AUTOPLAY_ALLOW_RUN_DELETE`
+> **Three variables were removed in 0.10** and need no replacement:
+> `AUTOPLAY_ALLOW_AGENT_IMPORT`, `AUTOPLAY_ALLOW_RUN_DELETE`
 > and `AUTOPLAY_SCHEDULER`. Uploads, agent edits, run deletion and schedules are unconditional;
 > setting one of these now does nothing. The caution moved to
 > `AUTOPLAY_AGENTS_READONLY=1`, which refuses agent edits — see

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Release notes](release-notes.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Records & watchdogs](records-and-watchdogs.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Release notes](release-notes.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/troubleshooting.html)
@@ -160,10 +160,9 @@ first — it probes the URL, then the token, then uploads, and names which one f
 | *"could not be reached. If the host is up, it may not list this app's origin"* | Almost always the **CORS** list. The server must name this app's origin: `AUTOPLAY_CORS_ORIGINS=app://renderer,http://localhost:5173`. Settings → Run servers → Remote servers shows the line with a Copy button. A browser blocks the call before the server sees it, so its own logs show nothing. |
 | **Check** passes but every page is empty | Right server, wrong organization — you're seeing a real, empty roster. Check `AUTOPLAY_ACTIVE_ORG` on that server. |
 | *"rejected the token"* | Wrong or rotated bearer. Paste the credential **only** — a value that already starts with `Bearer ` becomes `Bearer Bearer …` and 401s. The app strips it, but a proxy in front may not. |
-| *"does not accept uploaded agents"* / `501` | On 0.10 there is nothing to switch on, so this means that **executor is an older build** (it needed `AUTOPLAY_ALLOW_AGENT_IMPORT=1`, or `AUTOPLAY_ALLOW_SCENARIO_IMPORT=1` for scenarios). Set the variable there, or update it. |
+| *"does not accept uploaded agents"* / `501` | On 0.10 there is nothing to switch on, so this means that **executor is an older build** (it needed `AUTOPLAY_ALLOW_AGENT_IMPORT=1`). Set the variable there, or update it. |
 | The upload worked but the agent won't run | The response's `supported` was false — usually a desktop- or window-scope agent on a server that has no screen. Set its [scope](user-guide.md#where-the-agent-works-scope) to **Sealed browser** and upload again. |
 | Uploading twice gave me two agents | An upload **creates** unless **Overwrite** is ticked, so a colliding id gets a suffix rather than replacing something possibly mid-run. Delete the old one deliberately, or upload with Overwrite. |
-| A scenario is there but won't run | It names agents that aren't on that server yet. The upload result lists them; upload those agents too. |
 | Typing in a remote agent's editor does nothing | That deployment pinned `AUTOPLAY_AGENTS_READONLY=1`, which refuses edits with `409`; the banner names it. Unset it there, or edit locally and upload. |
 | An edit saved but the agent still uses the old value | A model field the server's environment pins (`AUTOPLAY_MODEL_*`) always wins over what's stored. The editor flags those fields — change the deployment's environment instead. |
 | Some sections of a remote agent won't edit | Skills, functions, demonstrations, the signed-in profile and that machine's monitors are files and devices over there, not config. Each says where it lives. |
@@ -219,7 +218,7 @@ wrongly.
 | A request passes on **Send** but fails in `npm run apitest` or under an agent | Its [script](web-apis.md#scripts) doesn't run on those paths (*0.11.4*) — CI and agents grade the committed document. Move what the script does into a **Capture** or a **Test**. |
 | A script set a variable and nothing kept it | `pm.environment.set` writes to the **selected** environment; with none selected there's nowhere to put it, and the response pane says so. |
 | A script "ran past its time limit" / `pm.x is not a function` | Scripts get 2 seconds and run synchronously, and `pm.expect` implements the matchers real tests use rather than all of chai — an absent one names itself instead of answering wrongly. |
-| A past send isn't in the history list | Only sends **a person makes** are recorded (*0.15*). A scenario step, `npm run apitest` and an agent calling a saved request deliberately leave nothing behind. The last 25 per request are kept; older ones fall off. |
+| A past send isn't in the history list | Only sends **a person makes** are recorded (*0.15*). `npm run apitest` and an agent calling a saved request deliberately leave nothing behind. The last 25 per request are kept; older ones fall off. |
 | A restored send 401s where the original didn't | The credential typed for that send was a literal, and literals aren't written into history — so the snapshot uses the credential you have **now**, and the banner above the fields says so (*0.15*). A `{{secret:NAME}}` reference is kept, because a name is safe to write down. |
 | History vanished after a `git clone` on another machine | It's per-machine and never committed: it lives in the workspace's gitignored `.apiclient/` folder, which the sync backend also skips. Two people's sends aren't a thing to merge. |
 | A request hangs and there's no way out | **Send is a Cancel** while a request is in the air (*0.15*). Before that release the only ways out were the 30-second timeout or restarting the app. |

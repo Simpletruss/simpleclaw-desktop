@@ -38,6 +38,7 @@ const PAGES = [
   ['index.html', 'Overview'],
   ['getting-started.md', 'Getting started'],
   ['user-guide.md', 'User guide'],
+  ['records-and-watchdogs.md', 'Records & watchdogs'],
   ['android-devices.md', 'Android devices'],
   ['web-apis.md', 'Web APIs'],
   ['agent-api.md', 'Agent API'],

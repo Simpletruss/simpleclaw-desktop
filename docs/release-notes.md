@@ -1,6 +1,6 @@
 # SimpleClaw — Release notes
 
-[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
+[← Docs home](index.html) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Records & watchdogs](records-and-watchdogs.md) · [Android devices](android-devices.md) · [Web APIs](web-apis.md) · [Agent API](agent-api.md) · [Server mode](server-mode.md) · [Cluster](cluster.md) · [Functions](functions.md) · [Safety & privacy](safety-and-privacy.md) · [Troubleshooting](troubleshooting.md)
 
 > **Version note.** This file is the copy in whatever branch or tag you're browsing.
 > The [docs site](https://simpletruss.github.io/simpleclaw-desktop/release-notes.html)
@@ -10,14 +10,105 @@ What each release added, newest first. Installers for every release are on the
 [Releases page](https://github.com/Simpletruss/simpleclaw-desktop/releases).
 
 **Which version am I on?** **⚙ Settings → About** shows it, next to a short *What's new* for
-the last few releases. The docs you're reading now describe **0.16.x** — use the version menu
+the last few releases. The docs you're reading now describe **0.18.x** — use the version menu
 at the top of any page to read an older release's docs instead.
 
 ---
 
-## 0.16 — A fleet, and a phone
+## 0.18 — A thousand records, and a page that is watched
 
 *Current release.*
+
+> **The guides have not all caught up.** This entry and
+> [Records & watchdogs](records-and-watchdogs.md) describe 0.18. The other pages below still
+> describe **0.16** in places, and the 0.17 series was never written up — use the version menu to
+> read a page as it stood for a release it does describe.
+
+**One task can work through a thousand records.** The set — a spreadsheet of work orders, a list
+of accounts, a queue read off a screen — goes into a **ledger** on disk, and the agent is handed
+**one record at a time** with the conversation cleared between them. Record 413 costs exactly what
+record 1 did. What happened to each is written down as it goes: done, failed or skipped, with a
+line saying why. → [The ledger](records-and-watchdogs.md#part-one-the-ledger)
+
+**It turns on by itself, per run**, from an attached file holding five or more records or a plan
+step the planner marked as repeating. An ordinary one-shot task is deliberately never offered it.
+→ [When a ledger turns on](records-and-watchdogs.md#when-a-ledger-turns-on)
+
+**The set is a table you can read while the run is still going** — filter by status, search the
+notes, open a record on its own, export the whole thing or a hand-picked list of rows as CSV or
+JSON. It is a file beside the run rather than something in the running process's memory, so the
+window, another machine's window and the control API can all read it mid-run.
+→ [The record table](records-and-watchdogs.md#the-record-table)
+
+**An interrupted run resumes by re-loading the same file.** Already-settled records are not
+redone. Taking a record is one transaction, so two processes on the same set can never both be
+handed record 413 — which for a task that cancels things would be damage, not a duplicate.
+→ [Resuming an interrupted run](records-and-watchdogs.md#resuming-an-interrupted-run)
+
+**A schedule can watch a page.** It looks every few minutes, works out which records are new, and
+starts a **flow** for each one. The division is the whole design: the **waiting** belongs to the
+schedule, the **diff** to a ledger the watchdog keeps across every check, and the run only
+**looks** — open the page, read it, report, finish. Nothing compares pixels and nothing parses the
+DOM. → [Watchdogs](records-and-watchdogs.md#part-two-watchdogs)
+
+**What you write is where to look, not the standing job.** *"Watch this page and run the flow when
+the number changes"* is the right description of the arrangement and the wrong instruction for one
+run — taken literally it produced a model that sat there re-screenshotting until its steps ran
+out. The form previews the exact text a check will send, so the arrangement is not something you
+have to take on trust.
+→ [The three parts of a watchdog](records-and-watchdogs.md#the-three-parts-of-a-watchdog)
+
+**Every check re-opens the page before reading it.** Checks share one browser, and the tab has been
+in the background since the last check — a page left alone never goes back to the server, so it
+paints a screen that is minutes old and looks entirely healthy. Measured over 12 consecutive checks
+on one watchdog, the 9 that read the paint produced **byte-identical screenshots**, and the
+reported work order changed on exactly the 3 that happened to navigate.
+→ [What one check actually does](records-and-watchdogs.md#what-one-check-actually-does)
+
+**A watchdog writes one history record, not one every three minutes.** Twenty sessions an hour,
+nearly all of them *"records: none"*, buried the checks that found something. The standing record
+keeps the last few checks; the **ledger** is the account that is kept in full.
+→ [Its ledger, and its history record](records-and-watchdogs.md#its-ledger-and-its-history-record)
+
+**Watching and doing the work can be two different agents**, and usually should be: watching is
+reading a list, and the flow needs the agent that knows the system. They get a browser each.
+→ [Two agents, two browsers](records-and-watchdogs.md#two-agents-two-browsers)
+
+**Watchdogs on an executor are managed from the desktop** — created, and **edited in place keeping
+their id**, which matters because the ledger weeks of checks have been writing into is kept under
+that id. Their live line and their ledger read down the wire.
+→ [Watchdogs on a server](records-and-watchdogs.md#watchdogs-on-a-server)
+
+**Ledgers can live in a database.** A watchdog's ledger sits under the agent tree, which in a
+container is usually an SMB mount — and SMB does not give SQLite the locks it asks for, so every
+check threw `database is locked`, the watch never worked out what was new, and the flow it exists
+to start never started. SQLite on a machine, Mongo in a deployment, on the same connection string
+that already decides where the run index lives.
+→ [Where a ledger lives](records-and-watchdogs.md#where-a-ledger-lives)
+
+**The control API carries all of it**: a `watch` block on a schedule, a `PATCH` that changes one in
+place, `GET /v1/watch-status` behind the live line, and `GET` / `POST` / `DELETE` on a schedule's
+ledger to page it, export it, or make it forget records.
+→ [The control API](records-and-watchdogs.md#the-control-api)
+
+**Also in this series.** The screenshot pane no longer lags a whole inference behind the run: a
+live frame channel pushes the picture ahead of the step that will carry it, and the screen **after**
+an action is kept when it is not a duplicate of the next turn's. Replay pops out full screen, and
+the aim marker ripples at the moment the press fired — once for a click, twice for a double-click,
+never for a step that never dispatched. A flow's node stops working past its own finish line, and
+is handed the previous node's report instead of planning from a standing start. Every click names
+where it is aimed. macOS installers build again.
+
+**Point releases in this series**
+
+| Release | What it added |
+|---------|---------------|
+| **0.18.3** | Remote watchdog create and edit-in-place, watch status and ledger over the control API, ledgers in Mongo. |
+| **0.18.0** | The live frame channel, the kept after-action frame, full-screen replay, and the flow changes. |
+
+---
+
+## 0.16 — A fleet, and a phone
 
 **Several executors can share one queue.** Point them at the same Redis and they stop being
 separate machines a caller has to choose between: a task is submitted to **whichever node you can
@@ -795,6 +886,11 @@ server that passes **Check** still refuses the app.
 ---
 
 ## 0.8 — Scenarios across agents
+
+> **Removed since.** Scenarios and passes are no longer part of SimpleClaw — the pages,
+> the `/v1/scenarios` and `/v1/passes` routes, and the saved records are all gone. This
+> entry is kept as the record of what 0.8 shipped; it does not describe the current
+> release.
 
 **One saved process can now span several agents.** A [scenario](user-guide.md#running-a-whole-process-scenarios)
 is an ordered list of steps run as a single **pass**, and each step names **which agent runs
